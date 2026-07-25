@@ -893,6 +893,77 @@ namespace AmigaNet.Legion
 
         private readonly UnitPathState[,] unitPaths = new UnitPathState[41, 11];
 
+        /// <summary>
+        /// Per-unit cached A* path for attack orders (see <see cref="A_ATAK"/>).
+        /// Uses a wider arrival distance since the unit stops at melee range,
+        /// not on top of the target.
+        /// </summary>
+        private class AttackPathState
+        {
+            public List<(int X, int Y)> Waypoints = new();
+            public int Index;
+            public int PlannedForTargetX;
+            public int PlannedForTargetY;
+            public int PlannedAtEpoch = -1;
+        }
+
+        private readonly AttackPathState[,] attackPaths = new AttackPathState[41, 11];
+
+        // Attack arrival distance: stop when within melee range (33px X, 21px Y).
+        private const int AttackArriveDistance = 25;
+        // Repath attack when target moves more than this many pixels.
+        private const int AttackRepathDrift = 16;
+
+        /// <summary>
+        /// Resolves the immediate waypoint for A_ATAK using cached A* pathfinding.
+        /// The path is replanned when the target moves significantly or the zone
+        /// epoch changes. Falls back to direct-line movement if no path is found.
+        /// </summary>
+        void GetAttackWaypoint(int A, int I, int X1, int Y1, int targetX, int targetY, out int WPX, out int WPY)
+        {
+            var state = attackPaths[A, I];
+            if (state == null)
+            {
+                state = new AttackPathState();
+                attackPaths[A, I] = state;
+            }
+
+            var targetMoved = Math.Abs(state.PlannedForTargetX - targetX) > AttackRepathDrift
+                           || Math.Abs(state.PlannedForTargetY - targetY) > AttackRepathDrift;
+            var stale = state.PlannedAtEpoch != screens.ZoneEpoch;
+            var exhausted = state.Index >= state.Waypoints.Count;
+
+            if (targetMoved || stale || exhausted)
+            {
+                navGrid.RebuildIfNeeded(screens);
+                CollectDynamicBlockers(A, I);
+                var path = pathfinder.FindPath(navGrid, A == ARM, X1, Y1, targetX, targetY);
+                navGrid.ClearDynamicBlockers();
+
+                state.PlannedForTargetX = targetX;
+                state.PlannedForTargetY = targetY;
+                state.PlannedAtEpoch = screens.ZoneEpoch;
+                state.Index = 0;
+                state.Waypoints = path ?? new List<(int X, int Y)>();
+            }
+
+            if (state.Waypoints.Count == 0)
+            {
+                WPX = targetX;
+                WPY = targetY;
+                return;
+            }
+
+            while (state.Index < state.Waypoints.Count - 1
+                && Math.Abs(state.Waypoints[state.Index].X - X1) <= AttackArriveDistance
+                && Math.Abs(state.Waypoints[state.Index].Y - Y1) <= AttackArriveDistance)
+            {
+                state.Index++;
+            }
+
+            (WPX, WPY) = state.Waypoints[state.Index];
+        }
+
         // How far the unit must be from a waypoint before it's considered "reached" -
         // large enough to prevent rapid direction flips on zigzag waypoints, but
         // small enough that the unit still follows the path accurately.
@@ -1722,46 +1793,60 @@ namespace AmigaNet.Legion
             var ROZX = X2 - X1;
             var ROZY = Y2 - Y1;
 
-            if (Math.Abs(ROZX) > 33)
+            // Use A* pathfinding to approach the target, navigating around obstacles.
+            // GetAttackWaypoint returns a cached waypoint that's replanned when the
+            // target moves significantly.
+            GetAttackWaypoint(A, I, X1, Y1, X2, Y2, out var WPX, out var WPY);
+            var WROZX = WPX - X1;
+            var WROZY = WPY - Y1;
+
+            if (Math.Abs(ROZX) > 33 || Math.Abs(ROZY) > 21)
             {
-                var ZNX = amos.Sgn(ROZX);
-                var T = 0;
-                if (ZNX == -1)
+                // Move toward the waypoint (not directly at the target) to navigate
+                // around obstacles. Use dominant axis for sprite direction.
+                if (Math.Abs(WROZX) > 4)
                 {
-                    BNR = BAZA + 4 + KLATKA;
-                    T = -17;
+                    var ZNX = amos.Sgn(WROZX);
+                    var T = 0;
+                    if (ZNX == -1)
+                    {
+                        BNR = BAZA + 4 + KLATKA;
+                        T = -17;
+                    }
+                    if (ZNX == 1)
+                    {
+                        BNR = BAZA + 10 + KLATKA;
+                        T = 17;
+                    }
+                    var ST = screens.Zone(X1 + T, Y1);
+                    if (ST == 0 || ST > 30 && ST < 41 && A == ARM)
+                    {
+                        X1 += ZNX * SPEED;
+                        KLIN--;
+                    }
                 }
-                if (ZNX == 1)
+                if (Math.Abs(WROZY) > 4)
                 {
-                    BNR = BAZA + 10 + KLATKA;
-                    T = 17;
-                }
-                var ST = screens.Zone(X1 + T, Y1);
-                if (ST == 0 || ST > 30 && ST < 41 && A == ARM)
-                {
-                    X1 += ZNX * SPEED;
-                    KLIN--;
-                }
-            }
-            if (Math.Abs(ROZY) > 21)
-            {
-                var ZNY = amos.Sgn(ROZY);
-                var T = 0;
-                if (ZNY == -1)
-                {
-                    BNR = BAZA + 1 + KLATKA;
-                    T = -21;
-                }
-                if (ZNY == 1)
-                {
-                    BNR = BAZA + 7 + KLATKA;
-                    T = 2;
-                }
-                var ST = screens.Zone(X1, Y1 + T);
-                if (ST == 0 || ST > 30 && ST < 41 && A == ARM)
-                {
-                    Y1 += ZNY * SPEED;
-                    KLIN--;
+                    var ZNY = amos.Sgn(WROZY);
+                    var T = 0;
+                    if (ZNY == -1)
+                    {
+                        T = -21;
+                    }
+                    if (ZNY == 1)
+                    {
+                        T = 2;
+                    }
+                    var ST = screens.Zone(X1, Y1 + T);
+                    if (ST == 0 || ST > 30 && ST < 41 && A == ARM)
+                    {
+                        Y1 += ZNY * SPEED;
+                        if (Math.Abs(WROZY) >= Math.Abs(WROZX))
+                        {
+                            BNR = ZNY == -1 ? BAZA + 1 + KLATKA : BAZA + 7 + KLATKA;
+                        }
+                        KLIN--;
+                    }
                 }
             }
 
