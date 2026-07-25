@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using AmigaNet.Amos.Screens;
 using AmigaNet.Legion.Pathfinding;
 using AmigaNet.Types.Graphics;
@@ -132,6 +134,8 @@ namespace AmigaNet.Legion
                 }
             }
         Exit2:;
+            //'--- Podsumowanie bitwy - ekran łupów ---
+            PODSUMOWANIE_BITWY();
             //'------------------
             screens.Screen(0);
             screens.Fade(2);
@@ -3271,6 +3275,211 @@ namespace AmigaNet.Legion
             }
             screens.ResetZone(NR);
         }
+
+        void PODSUMOWANIE_BITWY()
+        {
+            if (WYNIK_AKCJI != 1) return;
+
+            // Collect all loot from GLEBA into a list
+            var lupItems = new List<int>();
+            for (var J = 0; J <= 110; J++)
+            {
+                for (var I = 0; I <= 7; I++)
+                {
+                    if (GLEBA[J, I] > 0)
+                    {
+                        lupItems.Add(GLEBA[J, I]);
+                    }
+                }
+            }
+
+            // Count surviving player warriors
+            var WOJ = 0;
+            for (var I = 1; I <= 10; I++)
+            {
+                if (ARMIA[ARM, I, TE] > 0) WOJ++;
+            }
+
+            // Reopen screen 1 at larger size for summary
+            screens.ScreenClose(1);
+            screens.ScreenOpen(1, 640, 400, 32, PixelMode.Lowres);
+            screens.ScreenDisplay(1, 0, 0, 640, 400);
+            screens.ReserveZone(200);
+
+            // Summary screen loop
+            var KONIEC = false;
+            varTakenCount = 0;
+
+            while (!KONIEC)
+            {
+                screens.Screen(1);
+                screens.Cls(0);
+
+                // Title
+                USTAW_FONT("defender2", 8);
+                screens.Ink(31, 0);
+                screens.Text(250, 30, TR("BATTLE_VICTORY"));
+
+                // Survivors
+                screens.Ink(1, 0);
+                screens.Text(250, 55, TR("BATTLE_SURVIVORS", WOJ));
+
+                // Loot header
+                screens.Ink(1, 0);
+                screens.Text(40, 90, TR("BATTLE_LOOT"));
+
+                // Draw loot grid (4 columns, max 16 items)
+                var COLS = 4;
+                var MAX_SHOW = 16;
+                var shown = Math.Min(lupItems.Count, MAX_SHOW);
+
+                // Clear old zones first
+                for (var Z = 1; Z <= 16; Z++)
+                {
+                    screens.ResetZone(Z);
+                }
+
+                for (var I = 0; I < shown; I++)
+                {
+                    var COL = I % COLS;
+                    var ROW = I / COLS;
+                    var X = 40 + COL * 150;
+                    var Y = 115 + ROW * 50;
+                    var BR = lupItems[I];
+
+                    // Draw item background
+                    screens.Ink(20, 0);
+                    screens.Bar(X, Y, X + 140, Y + 40);
+
+                    // Draw item icon
+                    if (BR > 0 && BR < 121)
+                    {
+                        var BOB_NR = BRON[BR, B_BOB];
+                        if (BOB_NR > 0)
+                        {
+                            screens.PasteBob(X + 4, Y + 4, BOB_NR);
+                        }
+                    }
+
+                    // Draw item name
+                    if (BR > 0 && BR < 121 && BRON_S[BR] != null)
+                    {
+                        screens.Ink(31, 20);
+                        screens.Text(X + 30, Y + 18, BRON_S[BR]);
+                    }
+
+                    // Set zone for click
+                    screens.SetZone(I + 1, X, Y, X + 140, Y + 40);
+                }
+
+                // Taken count
+                screens.Ink(1, 0);
+                screens.Text(40, 340, TR("BATTLE_TAKEN", varTakenCount));
+
+                // No space warning
+                if (varNoSpace)
+                {
+                    screens.Ink(31, 0);
+                    screens.Text(40, 360, TR("BATTLE_NO_SPACE"));
+                }
+
+                // Buttons
+                var BTN_TAKE_ALL = 100;
+                var BTN_NEXT = 101;
+                GADGET(400, 330, 110, 20, TR("BATTLE_TAKE_ALL"), 8, 1, 6, 31, BTN_TAKE_ALL);
+                GADGET(530, 330, 70, 20, TR("BATTLE_NEXT"), 8, 1, 6, 31, BTN_NEXT);
+
+                screens.View();
+                varNoSpace = false;
+
+                // Wait for input
+                while (true)
+                {
+                    if (screens.MouseClick() == 1)
+                    {
+                        var STREFA = screens.MouseZone();
+
+                        // Click on item (zones 1-16)
+                        if (STREFA >= 1 && STREFA <= shown)
+                        {
+                            var idx = STREFA - 1;
+                            var BR = lupItems[idx];
+                            if (BR > 0)
+                            {
+                                var placed = false;
+                                for (var W = 1; W <= 10; W++)
+                                {
+                                    if (ARMIA[ARM, W, TE] > 0)
+                                    {
+                                        for (var S = 0; S <= 7; S++)
+                                        {
+                                            if (ARMIA[ARM, W, TPLECAK + S] == 0)
+                                            {
+                                                ARMIA[ARM, W, TPLECAK + S] = BR;
+                                                lupItems.RemoveAt(idx);
+                                                varTakenCount++;
+                                                placed = true;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                    if (placed) break;
+                                }
+                                if (!placed) varNoSpace = true;
+                            }
+                            break; // Redraw screen
+                        }
+
+                        // Take all button
+                        if (STREFA == BTN_TAKE_ALL)
+                        {
+                            var i = 0;
+                            while (i < lupItems.Count)
+                            {
+                                var BR = lupItems[i];
+                                var placed = false;
+                                for (var W = 1; W <= 10; W++)
+                                {
+                                    if (ARMIA[ARM, W, TE] > 0)
+                                    {
+                                        for (var S = 0; S <= 7; S++)
+                                        {
+                                            if (ARMIA[ARM, W, TPLECAK + S] == 0)
+                                            {
+                                                ARMIA[ARM, W, TPLECAK + S] = BR;
+                                                lupItems.RemoveAt(i);
+                                                varTakenCount++;
+                                                placed = true;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                    if (placed) break;
+                                }
+                                if (!placed) i++; // Skip items that don't fit
+                            }
+                            break; // Redraw screen
+                        }
+
+                        // Next button
+                        if (STREFA == BTN_NEXT)
+                        {
+                            KONIEC = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // Restore screen 1 to original battle size
+            screens.ScreenClose(1);
+            screens.ScreenOpen(1, 320, 160, 32, PixelMode.Lowres);
+            screens.ScreenDisplay(1, 130, 275, 320, 25);
+            screens.ReserveZone(100);
+        }
+
+        int varTakenCount = 0;
+        bool varNoSpace = false;
 
         void FX(int SAM)
         {

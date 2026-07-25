@@ -53,6 +53,13 @@ namespace AmigaNet.Legion
             ["PLAGUE_FIRE"] = "Płomienie strawiły wielu miaszkańców i ich domostwa.",
             ["PLAGUE_DISEASE"] = "Epidemia zarazy kosi swe śmiertelne żniwo ! ",
             ["PLAGUE_RATS"] = "Szczury pożarły cały zapas zboża w spichlerzach.",
+            ["BATTLE_VICTORY"] = "Zwycięstwo!",
+            ["BATTLE_SURVIVORS"] = "Nasi: {0}/10 wojowników",
+            ["BATTLE_LOOT"] = "Łupy z pola bitwy:",
+            ["BATTLE_TAKE_ALL"] = "Zabierz wszystko",
+            ["BATTLE_NEXT"] = "Dalej",
+            ["BATTLE_TAKEN"] = "Zabrano: {0} przedmiotów",
+            ["BATTLE_NO_SPACE"] = "Brak miejsca w plecakach!",
         };
 
         private static readonly Dictionary<string, string> STRINGS_EN = new Dictionary<string, string>
@@ -102,6 +109,13 @@ namespace AmigaNet.Legion
             ["PLAGUE_FIRE"] = "Flames consumed many inhabitants and their homes.",
             ["PLAGUE_DISEASE"] = "A plague epidemic is reaping its deadly harvest! ",
             ["PLAGUE_RATS"] = "Rats devoured the entire grain supply in the granaries.",
+            ["BATTLE_VICTORY"] = "Victory!",
+            ["BATTLE_SURVIVORS"] = "Our troops: {0}/10 warriors",
+            ["BATTLE_LOOT"] = "Loot from the battlefield:",
+            ["BATTLE_TAKE_ALL"] = "Take all",
+            ["BATTLE_NEXT"] = "Next",
+            ["BATTLE_TAKEN"] = "Taken: {0} items",
+            ["BATTLE_NO_SPACE"] = "No space in backpacks!",
         };
 
         private string TR(string key, params object[] args)

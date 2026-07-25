@@ -725,6 +725,21 @@
                         MAGIA = MAGMA;
                     }
                     ARMIA[ARM, NUMER, TMAG] = MAGIA;
+
+                    // Temporarily remove equipment bonuses from other slots so
+                    // the racial cap is evaluated against the base stat only.
+                    // This fixes the Amiga bug where drinking a potion while
+                    // wearing +STR gear would reduce strength instead of raising it.
+                    if (ZNAK == 1)
+                    {
+                        for (var slot = 0; slot <= 4; slot++)
+                        {
+                            if (slot == I) continue;
+                            if (ARMIA[ARM, NUMER, TGLOWA + slot] > 0)
+                                PRZELICZ(slot, -1);
+                        }
+                    }
+
                     var MXSI = (RASY[RASA, 1] / 2) + 30;
                     var MXSZ = RASY[RASA, 2] + 20;
                     if (ARMIA[ARM, NUMER, TSI] + SI > MXSI)
@@ -758,6 +773,17 @@
                 if (ARMIA[ARM, NUMER, TE] < 1)
                 {
                     ARMIA[ARM, NUMER, TE] = 1;
+                }
+
+                // Re-apply equipment bonuses that were temporarily removed.
+                if ((TYP == 13 || TYP == 18) && ZNAK == 1)
+                {
+                    for (var slot = 0; slot <= 4; slot++)
+                    {
+                        if (slot == I) continue;
+                        if (ARMIA[ARM, NUMER, TGLOWA + slot] > 0)
+                            PRZELICZ(slot, 1);
+                    }
                 }
             }
         }
