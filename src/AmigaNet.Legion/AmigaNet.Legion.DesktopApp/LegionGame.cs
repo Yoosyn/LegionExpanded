@@ -45,6 +45,7 @@ namespace AmigaNet.Legion.DesktopApp
         private int lastKey = 0;
         private int lastInkey = 0;
         private Queue<KeyInfo> keyboardBuffer = new Queue<KeyInfo>();
+        private KeyboardState currentKeyState;
 
         private readonly DynamicSoundEffectInstance soundEffectInstance;
         private XnaSoundRenderer soundRenderer;
@@ -149,6 +150,7 @@ namespace AmigaNet.Legion.DesktopApp
 
 
             var state = Keyboard.GetState();
+            currentKeyState = state;
             var keys = state.GetPressedKeys();
 
             if (keys.Length > 0)
@@ -453,6 +455,11 @@ namespace AmigaNet.Legion.DesktopApp
         public int GetKeyPressed()
         {
             return pressedKey;
+        }
+
+        public bool IsKeyDown(int keyCode)
+        {
+            return currentKeyState.IsKeyDown((Keys)keyCode);
         }
 
         public String GetInkey()

@@ -31,6 +31,8 @@ namespace AmigaNet.Amos
         void WaitVbl();
 
         int GetKeyPressed();
+
+        bool IsKeyDown(int keyCode);
         
         String GetInkey();
 

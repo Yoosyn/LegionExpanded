@@ -30,6 +30,8 @@ namespace AmigaNet.Legion
         private const int KeyF8 = 119;
         private const int KeyF9 = 120;
         private const int KeyF10 = 121;
+        private const int KeyLeftControl = 162;
+        private const int KeyRightControl = 163;
 
         private readonly AmosBase amos;
         private readonly ScreensManager screens;

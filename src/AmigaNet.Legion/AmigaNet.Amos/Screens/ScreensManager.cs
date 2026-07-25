@@ -1643,6 +1643,14 @@ namespace AmigaNet.Amos.Screens
         }
 
         /// <summary>
+        /// Checks whether a specific key is currently held down (e.g. modifier keys).
+        /// </summary>
+        public bool IsKeyDown(int scancode)
+        {
+            return gameEngine.IsKeyDown(scancode);
+        }
+
+        /// <summary>
         /// X MOUSE
         /// reserved variable: report or set the x-co-ordinate of the mouse pointer
         /// </summary>

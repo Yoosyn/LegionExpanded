@@ -71,14 +71,22 @@
                 {
                     var BR = 0;
                     var STREFA = screens.MouseZone();
+                    var CTRL = screens.IsKeyDown(KeyLeftControl) || screens.IsKeyDown(KeyRightControl);
                     if (STREFA > 0 && STREFA < 5)
                     {
                         BR = ARMIA[ARM, NUMER, TPLECAK + STREFA - 1];
                         if (BR > 0)
                         {
-                            GADGET(5 + X + ((STREFA - 1) * 25), Y + 5, 20, 20, "", 0, 5, 0, 16, 0);
-                            ARMIA[ARM, NUMER, TPLECAK + STREFA - 1] = 0;
-                            WYBOR_PICK(BR, X, Y, X2, Y2, NUMER, ref BB, SEK);
+                            if (CTRL)
+                            {
+                                WYBOR_AUTO_EQUIP(BR, STREFA - 1, X, Y, NUMER);
+                            }
+                            else
+                            {
+                                GADGET(5 + X + ((STREFA - 1) * 25), Y + 5, 20, 20, "", 0, 5, 0, 16, 0);
+                                ARMIA[ARM, NUMER, TPLECAK + STREFA - 1] = 0;
+                                WYBOR_PICK(BR, X, Y, X2, Y2, NUMER, ref BB, SEK);
+                            }
                         }
                     }
                     if (STREFA > 4 && STREFA < 9)
@@ -86,9 +94,16 @@
                         BR = ARMIA[ARM, NUMER, TPLECAK + STREFA - 1];
                         if (BR > 0)
                         {
-                            GADGET(5 + X + ((STREFA - 5) * 25), Y + 30, 20, 20, "", 0, 5, 0, 16, 0);
-                            ARMIA[ARM, NUMER, TPLECAK + STREFA - 1] = 0;
-                            WYBOR_PICK(BR, X, Y, X2, Y2, NUMER, ref BB, SEK);
+                            if (CTRL)
+                            {
+                                WYBOR_AUTO_EQUIP(BR, STREFA - 1, X, Y, NUMER);
+                            }
+                            else
+                            {
+                                GADGET(5 + X + ((STREFA - 5) * 25), Y + 30, 20, 20, "", 0, 5, 0, 16, 0);
+                                ARMIA[ARM, NUMER, TPLECAK + STREFA - 1] = 0;
+                                WYBOR_PICK(BR, X, Y, X2, Y2, NUMER, ref BB, SEK);
+                            }
                         }
                     }
                     if (STREFA > 8 && STREFA < 13)
@@ -96,9 +111,16 @@
                         BR = GLEBA[SEK, STREFA - 9];
                         if (BR > 0)
                         {
-                            GADGET(5 + X2 + ((STREFA - 9) * 25), Y2 + 5, 20, 20, "", 0, 5, 0, 16, 0);
-                            GLEBA[SEK, STREFA - 9] = 0;
-                            WYBOR_PICK(BR, X, Y, X2, Y2, NUMER, ref BB, SEK);
+                            if (CTRL)
+                            {
+                                WYBOR_GROUND_TO_BACKPACK(BR, SEK, STREFA - 9, X, Y, X2, Y2, NUMER);
+                            }
+                            else
+                            {
+                                GADGET(5 + X2 + ((STREFA - 9) * 25), Y2 + 5, 20, 20, "", 0, 5, 0, 16, 0);
+                                GLEBA[SEK, STREFA - 9] = 0;
+                                WYBOR_PICK(BR, X, Y, X2, Y2, NUMER, ref BB, SEK);
+                            }
                         }
                     }
                     if (STREFA > 29 && STREFA < 34)
@@ -106,9 +128,16 @@
                         BR = GLEBA[SEK, STREFA - 30 + 4];
                         if (BR > 0)
                         {
-                            GADGET(5 + X2 + ((STREFA - 30) * 25), Y2 + 30, 20, 20, "", 0, 5, 0, 16, 0);
-                            GLEBA[SEK, STREFA - 30 + 4] = 0;
-                            WYBOR_PICK(BR, X, Y, X2, Y2, NUMER, ref BB, SEK);
+                            if (CTRL)
+                            {
+                                WYBOR_GROUND_TO_BACKPACK(BR, SEK, STREFA - 30 + 4, X, Y, X2, Y2, NUMER);
+                            }
+                            else
+                            {
+                                GADGET(5 + X2 + ((STREFA - 30) * 25), Y2 + 30, 20, 20, "", 0, 5, 0, 16, 0);
+                                GLEBA[SEK, STREFA - 30 + 4] = 0;
+                                WYBOR_PICK(BR, X, Y, X2, Y2, NUMER, ref BB, SEK);
+                            }
                         }
                     }
                     if (STREFA == 13)
@@ -728,6 +757,163 @@
                 {
                     ARMIA[ARM, NUMER, TE] = 1;
                 }
+            }
+        }
+
+        /// <summary>
+        /// Ctrl+Click: move item from ground directly to the first empty backpack slot.
+        /// </summary>
+        void WYBOR_GROUND_TO_BACKPACK(int BR, int SEK, int groundSlot, int X, int Y, int X2, int Y2, int NUMER)
+        {
+            // Find first empty backpack slot
+            for (var I = 0; I <= 7; I++)
+            {
+                if (ARMIA[ARM, NUMER, TPLECAK + I] == 0)
+                {
+                    // Clear ground slot visually
+                    if (groundSlot < 4)
+                    {
+                        GADGET(5 + X2 + (groundSlot * 25), Y2 + 5, 20, 20, "", 0, 5, 0, 16, 0);
+                    }
+                    else
+                    {
+                        GADGET(5 + X2 + ((groundSlot - 4) * 25), Y2 + 30, 20, 20, "", 0, 5, 0, 16, 0);
+                    }
+                    GLEBA[SEK, groundSlot] = 0;
+
+                    // Place in backpack
+                    ARMIA[ARM, NUMER, TPLECAK + I] = BR;
+                    var BB1 = BRON[BR, B_BOB] + BROBY;
+                    if (I < 4)
+                    {
+                        screens.PasteBob(X + 7 + (I * 25), Y + 7, BB1 + GOBY);
+                    }
+                    else
+                    {
+                        screens.PasteBob(X + 7 + ((I - 4) * 25), Y + 32, BB1 + GOBY);
+                    }
+                    WAGA(ARM, NUMER);
+                    WYBOR_WYPISZ(Y, NUMER);
+                    return;
+                }
+            }
+            // No space in backpack - do nothing
+        }
+
+        /// <summary>
+        /// Ctrl+Click: auto-equip item from backpack to the appropriate equipment slot.
+        /// </summary>
+        void WYBOR_AUTO_EQUIP(int BR, int backpackSlot, int X, int Y, int NUMER)
+        {
+            var PLACE = BRON[BR, B_PLACE];
+            var TYP = BRON[BR, B_TYP];
+
+            // Arrows/ammo - consume into ammo pool
+            if (TYP == 17)
+            {
+                ARMIA[ARM, NUMER, TPLECAK + backpackSlot] = 0;
+                amos.Add(ref ARMIA[ARM, 0, TAMO], BRON[BR, B_DOSW], ARMIA[ARM, 0, TAMO], 320);
+                WYBOR_REDRAW_BACKPACK_SLOT(backpackSlot, X, Y);
+                WAGA(ARM, NUMER);
+                WYBOR_WYPISZ(Y, NUMER);
+                return;
+            }
+
+            var equipped = false;
+
+            if (PLACE == 1) // Head
+            {
+                if (ARMIA[ARM, NUMER, TGLOWA] == 0)
+                {
+                    ARMIA[ARM, NUMER, TGLOWA] = BR;
+                    PRZELICZ(0, 1);
+                    if (TYP != 13 && TYP != 18)
+                    {
+                        screens.PasteBob(49, 10, BRON[BR, B_BOB] + BROBY + GOBY);
+                    }
+                    else
+                    {
+                        ARMIA[ARM, NUMER, TGLOWA] = 0;
+                    }
+                    equipped = true;
+                }
+            }
+            else if (PLACE == 2) // Body
+            {
+                if (ARMIA[ARM, NUMER, TKORP] == 0)
+                {
+                    ARMIA[ARM, NUMER, TKORP] = BR;
+                    PRZELICZ(1, 1);
+                    if (TYP != 13)
+                    {
+                        screens.PasteBob(49, 46, BRON[BR, B_BOB] + BROBY + GOBY);
+                    }
+                    else
+                    {
+                        ARMIA[ARM, NUMER, TKORP] = 0;
+                    }
+                    equipped = true;
+                }
+            }
+            else if (PLACE == 3) // Legs
+            {
+                if (ARMIA[ARM, NUMER, TNOGI] == 0)
+                {
+                    ARMIA[ARM, NUMER, TNOGI] = BR;
+                    PRZELICZ(2, 1);
+                    screens.PasteBob(49, 110, BRON[BR, B_BOB] + BROBY + GOBY);
+                    equipped = true;
+                }
+            }
+            else if (PLACE == 4) // One-handed weapon
+            {
+                if (ARMIA[ARM, NUMER, TLEWA] == 0)
+                {
+                    ARMIA[ARM, NUMER, TLEWA] = BR;
+                    PRZELICZ(3, 1);
+                    screens.PasteBob(9, 60, BRON[BR, B_BOB] + BROBY + GOBY);
+                    equipped = true;
+                }
+                else if (ARMIA[ARM, NUMER, TPRAWA] == 0)
+                {
+                    ARMIA[ARM, NUMER, TPRAWA] = BR;
+                    PRZELICZ(4, 1);
+                    screens.PasteBob(89, 60, BRON[BR, B_BOB] + BROBY + GOBY);
+                    equipped = true;
+                }
+            }
+            else if (PLACE == 6) // Two-handed weapon
+            {
+                if (ARMIA[ARM, NUMER, TLEWA] == 0 && ARMIA[ARM, NUMER, TPRAWA] == 0)
+                {
+                    ARMIA[ARM, NUMER, TLEWA] = BR;
+                    PRZELICZ(3, 1);
+                    screens.PasteBob(9, 60, BRON[BR, B_BOB] + BROBY + GOBY);
+                    equipped = true;
+                }
+            }
+
+            if (equipped)
+            {
+                ARMIA[ARM, NUMER, TPLECAK + backpackSlot] = 0;
+                WYBOR_REDRAW_BACKPACK_SLOT(backpackSlot, X, Y);
+                WAGA(ARM, NUMER);
+                WYBOR_WYPISZ(Y, NUMER);
+            }
+        }
+
+        /// <summary>
+        /// Clears the backpack slot visual (redraws empty slot).
+        /// </summary>
+        void WYBOR_REDRAW_BACKPACK_SLOT(int slot, int X, int Y)
+        {
+            if (slot < 4)
+            {
+                GADGET(5 + X + (slot * 25), Y + 5, 20, 20, "", 0, 5, 0, 16, 0);
+            }
+            else
+            {
+                GADGET(5 + X + ((slot - 4) * 25), Y + 30, 20, 20, "", 0, 5, 0, 16, 0);
             }
         }
     }
