@@ -1,4 +1,4 @@
-﻿using AmigaNet.Amos.Screens;
+using AmigaNet.Amos.Screens;
 using AmigaNet.Legion.Pathfinding;
 using AmigaNet.Types.Graphics;
 
@@ -145,7 +145,7 @@ namespace AmigaNet.Legion
             screens.ScreenClose(1);
             for (var J = 0; J <= 110; J++)
             {
-                for (var I = 0; I <= 4; I++)
+                for (var I = 0; I <= 8; I++)
                 {
                     GLEBA[J, I] = 0;
                 }
@@ -894,8 +894,9 @@ namespace AmigaNet.Legion
         private readonly UnitPathState[,] unitPaths = new UnitPathState[41, 11];
 
         // How far the unit must be from a waypoint before it's considered "reached" -
-        // matches A_RUCH's own arrival threshold (Abs(ROZX)<=4 && Abs(ROZY)<=4).
-        private const int WaypointArriveDistance = 6;
+        // large enough to prevent rapid direction flips on zigzag waypoints, but
+        // small enough that the unit still follows the path accurately.
+        private const int WaypointArriveDistance = 10;
         // Replan once the order's target has drifted more than one grid cell since
         // the path was planned (covers WRG's self-reassigned wander targets).
         private const int ReplanTargetDriftDistance = NavGrid.CellSize;
@@ -923,7 +924,9 @@ namespace AmigaNet.Legion
             if (targetMoved || stale || exhausted)
             {
                 navGrid.RebuildIfNeeded(screens);
+                CollectDynamicBlockers(A, I);
                 var path = pathfinder.FindPath(navGrid, A == ARM, X1, Y1, X2, Y2);
+                navGrid.ClearDynamicBlockers();
 
                 state.PlannedForX = X2;
                 state.PlannedForY = Y2;
@@ -947,6 +950,27 @@ namespace AmigaNet.Legion
             }
 
             (WPX, WPY) = state.Waypoints[state.Index];
+        }
+
+        /// <summary>
+        /// Collects positions of all living units (except the one being planned for)
+        /// as dynamic blocker rects for NavGrid, so A* plans around other units.
+        /// </summary>
+        void CollectDynamicBlockers(int A, int I)
+        {
+            var blockers = new List<(int Left, int Top, int Width, int Height)>();
+            for (var a = 0; a <= 40; a++)
+            {
+                for (var i = 1; i <= 10; i++)
+                {
+                    if (a == A && i == I) continue;
+                    if (ARMIA[a, i, TE] <= 0) continue;
+                    var ux = ARMIA[a, i, TX];
+                    var uy = ARMIA[a, i, TY];
+                    blockers.Add((ux - 15, uy - 15, 30, 15));
+                }
+            }
+            navGrid.SetDynamicBlockers(blockers);
         }
 
         void A_RUCH(int A, int I)
@@ -1042,22 +1066,25 @@ namespace AmigaNet.Legion
             {
                 var ZNY = amos.Sgn(WROZY);
                 var T = 0;
-                var B2 = 0;
                 if (ZNY == -1)
                 {
-                    B2 = BAZA + 1 + KLATKA;
                     T = -21;
                 }
                 if (ZNY == 1)
                 {
-                    B2 = BAZA + 7 + KLATKA;
                     T = 2;
                 }
                 var ST = screens.Zone(X1, Y1 + T);
                 if (ST == 0 || (ST > 100 && ST < 120 || ST > 30 && ST < 41) && A == ARM)
                 {
                     Y1 += ZNY * SPEED;
-                    BNR = B2;
+                    // Use dominant axis for sprite direction: if horizontal delta
+                    // is larger, keep the left/right sprite set above. Only override
+                    // with up/down when vertical is clearly dominant.
+                    if (Math.Abs(WROZY) >= Math.Abs(WROZX))
+                    {
+                        BNR = ZNY == -1 ? BAZA + 1 + KLATKA : BAZA + 7 + KLATKA;
+                    }
                     KLIN--;
                 }
             }
@@ -1168,6 +1195,19 @@ namespace AmigaNet.Legion
                         }
                     }
                     return false;
+                }
+            }
+
+            // Force repath when sidestep couldn't find a way around - the cached
+            // path doesn't account for other units, so the next repath will include
+            // dynamic blockers and hopefully find an alternative route.
+            if (KLIN == 2 && (Math.Abs(WROZX) > 4 || Math.Abs(WROZY) > 4)
+                && (Math.Abs(ROZX) > 4 || Math.Abs(ROZY) > 4))
+            {
+                var state = unitPaths[A, I];
+                if (state != null)
+                {
+                    state.PlannedAtEpoch = -1;
                 }
             }
             else
@@ -1944,12 +1984,13 @@ namespace AmigaNet.Legion
                 if (BRON[(int)OSZ, B_TYP] == 9)
                 {
                     var SEK = SEKTOR(X1, Y1);
-                    for (var II = 0; II <= 3; II++)
+                    for (var II = 0; II <= 7; II++)
                     {
                         if (GLEBA[SEK, II] == 0)
                         {
                             GLEBA[SEK, II] = (int)OSZ;
-                            II = 4;
+                            screens.PasteBob(X1 - 8, Y1 + 8, BIBY + 11);
+                            II = 8;
                         }
                     }
                 }
@@ -2142,12 +2183,13 @@ namespace AmigaNet.Legion
                     if (proj.WeaponRef > 0 && BRON[proj.WeaponRef, B_TYP] == 9)
                     {
                         var SEK = SEKTOR(X1, Y1);
-                        for (var II = 0; II <= 3; II++)
+                        for (var II = 0; II <= 7; II++)
                         {
                             if (GLEBA[SEK, II] == 0)
                             {
                                 GLEBA[SEK, II] = proj.WeaponRef;
-                                II = 4;
+                                screens.PasteBob(X1 - 8, Y1 + 8, BIBY + 11);
+                                II = 8;
                             }
                         }
                     }
@@ -2238,9 +2280,13 @@ namespace AmigaNet.Legion
             Projectiles.Clear();
         }
 
-        int ComputeFireCooldown(int distance)
+        int ComputeFireCooldown(int army, int unitIndex)
         {
-            // Flat 3 second cooldown (38 ticks at 80ms/tick)
+            var race = ARMIA[army, unitIndex, TRASA];
+            var prefWeapon = RASY[race, 4];
+            // Elves (preferred weapon = bow type 4) fire 0.5s faster
+            if (prefWeapon == 4)
+                return FIRE_COOLDOWN_TICKS - 6;
             return FIRE_COOLDOWN_TICKS;
         }
 
@@ -2296,11 +2342,13 @@ namespace AmigaNet.Legion
             var aimX = curTX + velX * timeToImpact;
             var aimY = curTY + velY * timeToImpact;
 
-            // Add random angular spread
+            // Add random angular spread (reduced for elves)
+            var race = ARMIA[army, unitIndex, TRASA];
+            var spreadDeg = RASY[race, 4] == 4 ? 4.0 : AIM_SPREAD_DEGREES;
             var aimDX = aimX - shooterX;
             var aimDY = aimY - shooterY;
             var aimAngle = Math.Atan2(aimDY, aimDX);
-            var spreadRad = (amos.Rnd((int)(AIM_SPREAD_DEGREES * 2)) - AIM_SPREAD_DEGREES) * Math.PI / 180.0;
+            var spreadRad = (amos.Rnd((int)(spreadDeg * 2)) - spreadDeg) * Math.PI / 180.0;
             aimAngle += spreadRad;
             var aimDist = Math.Sqrt(aimDX * aimDX + aimDY * aimDY);
             aimX = shooterX + Math.Cos(aimAngle) * aimDist;
@@ -2414,9 +2462,8 @@ namespace AmigaNet.Legion
             SpawnProjectile(army, unitIndex, X1, Y1, VX_R * 6, VY_R * 6,
                 damage, spriteRef, weaponRef, isNegative);
 
-            // Set cooldown based on distance
-            var distance = (int)L_R;
-            var cooldown = ComputeFireCooldown(distance);
+            // Set cooldown
+            var cooldown = ComputeFireCooldown(army, unitIndex);
             if (army == WRG)
                 FireCooldownW[unitIndex] = cooldown;
             else
@@ -3064,7 +3111,7 @@ namespace AmigaNet.Legion
             var X = ARMIA[A, NR, TX];
             var Y = ARMIA[A, NR, TY];
             var SEK = SEKTOR(X, Y);
-            for (var I = 0; I <= 3; I++)
+            for (var I = 0; I <= 7; I++)
             {
                 if (GLEBA[SEK, I] == 0)
                 {
@@ -3123,6 +3170,19 @@ namespace AmigaNet.Legion
                 screens.PasteBob(X - 24, Y - 20, KB);
                 //Wait 2;
                 //Autoback 1
+            }
+            // Draw ground item marker so player can see where loot dropped
+            if (CICHO == 0)
+            {
+                var hasItems = false;
+                for (var I = 0; I <= 7; I++)
+                {
+                    if (GLEBA[SEK, I] > 0) { hasItems = true; break; }
+                }
+                if (hasItems)
+                {
+                    screens.PasteBob(X - 8, Y + 8, BIBY + 11);
+                }
             }
             screens.ResetZone(NR);
         }

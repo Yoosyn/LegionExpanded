@@ -8,14 +8,13 @@ namespace AmigaNet.Legion.Pathfinding
     /// linear-scanning the zone list per lookup. Rebuilt lazily whenever
     /// <see cref="ScreensManager.ZoneEpoch"/> changes.
     ///
-    /// Per-unit occupancy zones (id 1-20, rewritten every frame in A_RUCH - I2
-    /// ranges 1-10 for the player army and 11-20 for the enemy army) are
-    /// intentionally excluded - those stay dynamic and are handled by A_RUCH's
-    /// existing per-tick probe check, not baked into this cached grid.
-    ///
     /// Walkability is army-dependent, mirroring A_RUCH's original check
     /// (`ST == 0 || ((ST>100 && ST<120 || ST>30 && ST<41) && A == ARM)`): shop/trap
     /// zones (30-40, 100-119) are only passable for the player army.
+    ///
+    /// Dynamic unit blockers (id 1-20) can be set via <see cref="SetDynamicBlockers"/>
+    /// before each pathfinding query so A* plans around other units instead of
+    /// relying solely on the post-hoc sidestep heuristic.
     /// </summary>
     public class NavGrid
     {
@@ -26,8 +25,36 @@ namespace AmigaNet.Legion.Pathfinding
         private bool[,] blockedForPlayer = new bool[0, 0];
         private bool[,] blockedForOther = new bool[0, 0];
 
+        // Dynamic blockers: unit positions collected fresh before each repath.
+        // These cells are blocked for everyone except the unit being planned for.
+        private readonly HashSet<(int X, int Y)> dynamicBlocked = new();
+
         public int Cols { get; private set; }
         public int Rows { get; private set; }
+
+        /// <summary>
+        /// Sets dynamic blocker cells from unit zone rectangles. Call before each
+        /// pathfinding query so A* plans around other units. Each rect is
+        /// (left, top, width, height) in pixel coordinates, matching SetZone bounds.
+        /// </summary>
+        public void SetDynamicBlockers(List<(int Left, int Top, int Width, int Height)> unitRects)
+        {
+            dynamicBlocked.Clear();
+            foreach (var (left, top, width, height) in unitRects)
+            {
+                var (cx1, cy1) = ToCell(Math.Max(0, left), Math.Max(0, top));
+                var (cx2, cy2) = ToCell(Math.Max(0, left + width), Math.Max(0, top + height));
+                for (var cy = cy1; cy <= cy2; cy++)
+                    for (var cx = cx1; cx <= cx2; cx++)
+                        if (InBounds(cx, cy))
+                            dynamicBlocked.Add((cx, cy));
+            }
+        }
+
+        /// <summary>
+        /// Clears dynamic blockers. Call after pathfinding to avoid stale data.
+        /// </summary>
+        public void ClearDynamicBlockers() => dynamicBlocked.Clear();
 
         public void RebuildIfNeeded(ScreensManager screens)
         {
@@ -120,6 +147,7 @@ namespace AmigaNet.Legion.Pathfinding
         public bool IsWalkableCell(bool isPlayerArmy, int cellX, int cellY)
         {
             if (!InBounds(cellX, cellY)) return false;
+            if (dynamicBlocked.Contains((cellX, cellY))) return false;
             return isPlayerArmy ? !blockedForPlayer[cellX, cellY] : !blockedForOther[cellX, cellY];
         }
 

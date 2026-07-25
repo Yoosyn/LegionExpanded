@@ -18,7 +18,7 @@
             var X = 120;
             var Y = 5;
             var X2 = 120;
-            var Y2 = 100;
+            var Y2 = 75;
             var SEK = 0;
             var RASA = 0;
             var BB = 0;
@@ -31,12 +31,12 @@
             var YB = ARMIA[ARM, NUMER, TY];
 
             GADGET(X, Y, 105, 55, "", 5, 0, 8, 8, -1);
-            GADGET(X2, Y2, 105, 30, "", 5, 0, 8, 8, -1);
+            GADGET(X2, Y2, 105, 55, "", 5, 0, 8, 8, -1);
 
             GADGET(X + 5, 70, 95, 20, "", 0, 5, 19, 19, -1);
             GADGET(235, Y, 75, 100, "", 0, 5, 19, 19, -1);
-            GADGET(235, Y2 + 15, 30, 15, "   <", 5, 0, 8, 1, 21);
-            GADGET(280, Y2 + 15, 30, 15, "    >", 5, 0, 8, 1, 22);
+            GADGET(235, 115, 30, 15, "   <", 5, 0, 8, 1, 21);
+            GADGET(280, 115, 30, 15, "    >", 5, 0, 8, 1, 22);
             //'--------------strefy do�wiadczenia
             for (var I = 0; I <= 4; I++)
             {
@@ -98,6 +98,16 @@
                         {
                             GADGET(5 + X2 + ((STREFA - 9) * 25), Y2 + 5, 20, 20, "", 0, 5, 0, 16, 0);
                             GLEBA[SEK, STREFA - 9] = 0;
+                            WYBOR_PICK(BR, X, Y, X2, Y2, NUMER, ref BB, SEK);
+                        }
+                    }
+                    if (STREFA > 29 && STREFA < 34)
+                    {
+                        BR = GLEBA[SEK, STREFA - 30 + 4];
+                        if (BR > 0)
+                        {
+                            GADGET(5 + X2 + ((STREFA - 30) * 25), Y2 + 30, 20, 20, "", 0, 5, 0, 16, 0);
+                            GLEBA[SEK, STREFA - 30 + 4] = 0;
                             WYBOR_PICK(BR, X, Y, X2, Y2, NUMER, ref BB, SEK);
                         }
                     }
@@ -356,6 +366,7 @@
                 GADGET(5 + X + (I * 25), Y + 5, 20, 20, "", 0, 5, 0, 16, 1 + I);
                 GADGET(5 + X + (I * 25), Y + 30, 20, 20, "", 0, 5, 0, 16, 5 + I);
                 GADGET(5 + X2 + (I * 25), Y2 + 5, 20, 20, "", 0, 5, 0, 16, 9 + I);
+                GADGET(5 + X2 + (I * 25), Y2 + 30, 20, 20, "", 0, 5, 0, 16, 30 + I);
                 var B1 = ARMIA[ARM, NUMER, TPLECAK + I];
                 if (B1 > 0)
                 {
@@ -373,6 +384,12 @@
                 {
                     var BB3 = BRON[B3, B_BOB] + BROBY;
                     screens.PasteBob(X2 + 7 + (I * 25), Y2 + 7, BB3 + GOBY);
+                }
+                var B4 = GLEBA[SEK, I + 4];
+                if (B4 > 0)
+                {
+                    var BB4 = BRON[B4, B_BOB] + BROBY;
+                    screens.PasteBob(X2 + 7 + (I * 25), Y2 + 32, BB4 + GOBY);
                 }
             }
         }
@@ -491,6 +508,22 @@
                         var BR1 = GLEBA[SEK, I - 9];
                         screens.PasteBob(X2 + 7 + ((I - 9) * 25), Y2 + 7, BB + GOBY);
                         GLEBA[SEK, I - 9] = BR;
+                        if (BR1 == 0)
+                        {
+                            KONIEC = true;
+                        }
+                        else
+                        {
+                            BR = BR1;
+                            WYBOR_PICK_2(BR, X, ref BB);
+                        }
+                    }
+
+                    if (I > 29 && I < 34)
+                    {
+                        var BR1 = GLEBA[SEK, I - 30 + 4];
+                        screens.PasteBob(X2 + 7 + ((I - 30) * 25), Y2 + 32, BB + GOBY);
+                        GLEBA[SEK, I - 30 + 4] = BR;
                         if (BR1 == 0)
                         {
                             KONIEC = true;

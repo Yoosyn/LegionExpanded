@@ -84,7 +84,7 @@ namespace AmigaNet.Legion
         public string[] BRON_S = NewStringArray(121);
         public string[] BRON2_S = NewStringArray(26);
 
-        public int[,] GLEBA = new int[111, 5];
+        public int[,] GLEBA = new int[111, 9];
         public int[,] PLAPKI = new int[11, 5];
 
         public int[,] BUDYNKI = new int[13, 7];

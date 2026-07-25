@@ -659,7 +659,7 @@
                             if (LOS == 6 && screens.Zone(XB + 4, YB + 4) == 0 && amos.Rnd(2) == 0)
                             {
                                 var S = SEKTOR(XB + 15, YB + 10);
-                                GLEBA[S, amos.Rnd(3)] = amos.Rnd(MX_WEAPON);
+                                GLEBA[S, amos.Rnd(7)] = amos.Rnd(MX_WEAPON);
                                 screens.PasteBob(XB, YB, BIBY + 11);
                             }
                         }
