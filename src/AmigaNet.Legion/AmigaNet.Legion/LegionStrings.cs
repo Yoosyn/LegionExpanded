@@ -1,0 +1,114 @@
+using System.Collections.Generic;
+
+namespace AmigaNet.Legion
+{
+    public partial class Legion
+    {
+        public string LANG = "pl";
+
+        private static readonly Dictionary<string, string> STRINGS_PL = new Dictionary<string, string>
+        {
+            ["MAP_CHAOS_ARRIVE"] = "przybyli z piekieł by szerzyć śmierć",
+            ["MAP_FOOD_RUNNING_OUT"] = "Kończy nam się żywność.",
+            ["MAP_ARMY_DISBANDED"] = "Oddział rozwiązany",
+            ["MAP_CITY_REVOLT"] = "W mieście wybuchł bunt ! ",
+            ["MAP_REVOLT_ARMY_FIGHT"] = "{0} będzie walczył z rebeliantami.",
+            ["MAP_REBELS_TOOK_CITY"] = "Rebelianci przejęli miasto.",
+            ["MAP_ARMY_WAS_DEFEATED_DOT"] = " został rozbity.",
+            ["MAP_ATTACKED_OUR"] = "zaatakował nasz {0} ",
+            ["MAP_WAS_DEFEATED"] = "został rozbity ",
+            ["MAP_CAPTURED_SETTLEMENT"] = "Zdobył osadę {0}",
+            ["MAP_DEFEATED_DURING_ASSAULT"] = "został rozbity w czasie szturmu na miasto {0}",
+            ["VERB_ATTACK_SG"] = "e",
+            ["VERB_ATTACK_PL"] = "ą",
+            ["MAP_ATTACK_OUR_SETTLEMENT"] = "atakuj{0} naszą osadę {1} ",
+            ["MAP_CAPTURED_OUR_SETTLEMENT"] = "zdobył naszą osadę {0} ",
+            ["MAP_CITY_BURNED"] = "miasto zostało spalone ",
+            ["MAP_SEIZED_OUR_SETTLEMENT"] = "zajął naszą osadę {0} ",
+            ["MAP_BEGIN_ATTACK_SETTLEMENT"] = "Rozpoczynamy atak na osadę {0}",
+            ["MAP_WE_CAPTURED_SETTLEMENT"] = "Zdobyliśmy osadę {0} ",
+            ["ADV_WOLVES"] = "Osaczyło nas stado wściekłych wilków ! ",
+            ["ADV_BANDITS"] = "Zaatakowali nas zbóje ",
+            ["ADV_SWAMP"] = "Utknęliśmy na bagnach ",
+            ["ADV_TROLLS"] = "Okrążyły nas leśne trole ",
+            ["ADV_LONE_WARRIOR"] = "Spotkaliśmy samotnego wojownika ",
+            ["ADV_CAVE_ENTRANCE"] = "Odnaleźliśmy wejście do jaskini ",
+            ["ADV_REWARD_GOLD"] = "W nagrodę otrzymujesz {0} sztuk złota.",
+            ["ADV_BECOMES_YOURS"] = "Przechodzi w twoje władanie jako nagroda.",
+            ["ADV_BANDIT_HEAD_REWARD"] = "Za głowę zbira otrzymujesz {0} sztuk złota.",
+            ["BOSS_INTRO_1"] = "Władca Chaosu przebywa",
+            ["BOSS_INTRO_2"] = "w swojej podziemnej",
+            ["BOSS_INTRO_3"] = "krypcie grobowej,",
+            ["BOSS_INTRO_4"] = "z której zatruwa całe",
+            ["BOSS_INTRO_5"] = "królestwo.",
+            ["SETUP_BATTLE"] = "Bitwa",
+            ["SETUP_WITH_LORD"] = "z Władcą",
+            ["SETUP_OF_CHAOS"] = "Chaosu",
+            ["BOSS_DEFEAT_1"] = "Oto ten, który niszczył",
+            ["BOSS_DEFEAT_2"] = "wszelkie życie ",
+            ["BOSS_DEFEAT_3"] = "leży teraz martwy",
+            ["BOSS_DEFEAT_4"] = "u twych stóp",
+            ["ADV_COMPLETE"] = "Twoja przygoda dobiegła końca.",
+            ["MAP_TRACKED_BEAST"] = "Wytropiliśmy bestię !",
+            ["PLAGUE_FIRE"] = "Płomienie strawiły wielu miaszkańców i ich domostwa.",
+            ["PLAGUE_DISEASE"] = "Epidemia zarazy kosi swe śmiertelne żniwo ! ",
+            ["PLAGUE_RATS"] = "Szczury pożarły cały zapas zboża w spichlerzach.",
+        };
+
+        private static readonly Dictionary<string, string> STRINGS_EN = new Dictionary<string, string>
+        {
+            ["MAP_CHAOS_ARRIVE"] = "have arrived from the pits of hell to spread death",
+            ["MAP_FOOD_RUNNING_OUT"] = "We are running out of food.",
+            ["MAP_ARMY_DISBANDED"] = "Troop disbanded",
+            ["MAP_CITY_REVOLT"] = "A revolt has broken out in the city! ",
+            ["MAP_REVOLT_ARMY_FIGHT"] = "{0} will fight the rebels.",
+            ["MAP_REBELS_TOOK_CITY"] = "The rebels have taken over the city.",
+            ["MAP_ARMY_WAS_DEFEATED_DOT"] = " was defeated.",
+            ["MAP_ATTACKED_OUR"] = "attacked our {0} ",
+            ["MAP_WAS_DEFEATED"] = "was defeated ",
+            ["MAP_CAPTURED_SETTLEMENT"] = "Captured the settlement {0}",
+            ["MAP_DEFEATED_DURING_ASSAULT"] = "was defeated while storming the city {0}",
+            ["VERB_ATTACK_SG"] = "s",
+            ["VERB_ATTACK_PL"] = "",
+            ["MAP_ATTACK_OUR_SETTLEMENT"] = "attack{0} our settlement {1} ",
+            ["MAP_CAPTURED_OUR_SETTLEMENT"] = "captured our settlement {0} ",
+            ["MAP_CITY_BURNED"] = "the city was burned down ",
+            ["MAP_SEIZED_OUR_SETTLEMENT"] = "seized our settlement {0} ",
+            ["MAP_BEGIN_ATTACK_SETTLEMENT"] = "We begin the attack on the settlement {0}",
+            ["MAP_WE_CAPTURED_SETTLEMENT"] = "We captured the settlement {0} ",
+            ["ADV_WOLVES"] = "A pack of rabid wolves surrounded us! ",
+            ["ADV_BANDITS"] = "Bandits attacked us ",
+            ["ADV_SWAMP"] = "We got stuck in the swamps ",
+            ["ADV_TROLLS"] = "Forest trolls surrounded us ",
+            ["ADV_LONE_WARRIOR"] = "We met a lone warrior ",
+            ["ADV_CAVE_ENTRANCE"] = "We found the entrance to a cave ",
+            ["ADV_REWARD_GOLD"] = "As a reward you receive {0} pieces of gold.",
+            ["ADV_BECOMES_YOURS"] = "It passes into your possession as a reward.",
+            ["ADV_BANDIT_HEAD_REWARD"] = "For the bandit's head you receive {0} pieces of gold.",
+            ["BOSS_INTRO_1"] = "The Lord of Chaos resides",
+            ["BOSS_INTRO_2"] = "in his underground",
+            ["BOSS_INTRO_3"] = "burial crypt,",
+            ["BOSS_INTRO_4"] = "from which he poisons",
+            ["BOSS_INTRO_5"] = "the entire kingdom.",
+            ["SETUP_BATTLE"] = "Battle",
+            ["SETUP_WITH_LORD"] = "with the Lord",
+            ["SETUP_OF_CHAOS"] = "of Chaos",
+            ["BOSS_DEFEAT_1"] = "Here lies the one who destroyed",
+            ["BOSS_DEFEAT_2"] = "all living things ",
+            ["BOSS_DEFEAT_3"] = "now lying dead",
+            ["BOSS_DEFEAT_4"] = "at your feet",
+            ["ADV_COMPLETE"] = "Your adventure has come to an end.",
+            ["MAP_TRACKED_BEAST"] = "We tracked down the beast!",
+            ["PLAGUE_FIRE"] = "Flames consumed many inhabitants and their homes.",
+            ["PLAGUE_DISEASE"] = "A plague epidemic is reaping its deadly harvest! ",
+            ["PLAGUE_RATS"] = "Rats devoured the entire grain supply in the granaries.",
+        };
+
+        private string TR(string key, params object[] args)
+        {
+            var dict = LANG == "en" ? STRINGS_EN : STRINGS_PL;
+            var format = dict.TryGetValue(key, out var value) ? value : key;
+            return args.Length > 0 ? string.Format(format, args) : format;
+        }
+    }
+}
