@@ -3292,146 +3292,170 @@ namespace AmigaNet.Legion
                     }
                 }
             }
+            if (lupItems.Count == 0) return;
 
-            // Count surviving player warriors
-            var WOJ = 0;
+            // Find first alive warrior for backpack display
+            var NR = 1;
             for (var I = 1; I <= 10; I++)
             {
-                if (ARMIA[ARM, I, TE] > 0) WOJ++;
+                if (ARMIA[ARM, I, TE] > 0) { NR = I; break; }
             }
 
-            // Reopen screen 1 at larger size for summary
-            screens.ScreenClose(1);
-            screens.ScreenOpen(1, 640, 400, 32, PixelMode.Lowres);
-            screens.ScreenDisplay(1, 0, 0, 640, 400);
-            screens.ReserveZone(200);
+            // --- Setup screens like the shop ---
+            // Screen 2: main item grid (640x512 canvas, displayed at 130,40 with 320x244 visible)
+            screens.ScreenClose(2);
+            screens.ScreenOpen(2, 640, 512, 32, PixelMode.Lowres);
+            screens.ScreenDisplay(2, 130, 40, 320, 244);
+            screens.ScreenToFront(2);
+            screens.ReserveZone(100);
+            screens.SetFont(FON1);
+            screens.Cls(0);
 
-            // Summary screen loop
+            // Screen 1: backpack + warrior info (320x44, displayed at 130,255)
+            screens.ScreenClose(1);
+            screens.ScreenOpen(1, 320, 160, 32, PixelMode.Lowres);
+            screens.ScreenDisplay(1, 130, 255, 320, 44);
+            screens.Screen(1);
+            screens.ReserveZone(100);
+            screens.SetFont(FON1);
+            screens.Colour(0, 3, 1, 0);
+            // Draw backpack panel background
+            GADGET(234, 2, 80, 40, "", 19, 6, 0, 1, -1);
+            // Up/Down warrior arrows
+            GADGET(210, 2, 20, 16, " " + UpArrowChar, 5, 0, 8, 1, 1);
+            GADGET(210, 24, 20, 16, " " + DownArrowChar, 5, 0, 8, 1, 2);
+            // "Dalej" button
+            GADGET(6, 2, 120, 38, TR("BATTLE_NEXT"), 26, 24, 25, 30, 3);
+            // "Zabierz wszystko" button
+            GADGET(130, 2, 76, 38, TR("BATTLE_TAKE_ALL"), 26, 24, 25, 30, 4);
+
             var KONIEC = false;
             varTakenCount = 0;
 
             while (!KONIEC)
             {
-                screens.Screen(1);
+                // --- Screen 2: draw item grid ---
+                screens.Screen(2);
                 screens.Cls(0);
+                screens.SetFont(FON1);
 
                 // Title
-                USTAW_FONT("defender2", 8);
-                screens.Ink(31, 0);
-                screens.Text(250, 30, TR("BATTLE_VICTORY"));
+                OUTLINE(10, 10, TR("BATTLE_LOOT"), 31, 0);
 
-                // Survivors
-                screens.Ink(1, 0);
-                screens.Text(250, 55, TR("BATTLE_SURVIVORS", WOJ));
+                // Draw items in 2 rows x 10 columns (same as shop)
+                var ITEMS_PER_ROW = 10;
+                var gridCount = Math.Min(lupItems.Count, 20);
 
-                // Loot header
-                screens.Ink(1, 0);
-                screens.Text(40, 90, TR("BATTLE_LOOT"));
-
-                // Draw loot grid (4 columns, max 16 items)
-                var COLS = 4;
-                var MAX_SHOW = 16;
-                var shown = Math.Min(lupItems.Count, MAX_SHOW);
-
-                // Clear old zones first
-                for (var Z = 1; Z <= 16; Z++)
+                for (var I = 0; I < gridCount; I++)
                 {
-                    screens.ResetZone(Z);
-                }
-
-                for (var I = 0; I < shown; I++)
-                {
-                    var COL = I % COLS;
-                    var ROW = I / COLS;
-                    var X = 40 + COL * 150;
-                    var Y = 115 + ROW * 50;
+                    var COL = I % ITEMS_PER_ROW;
+                    var ROW = I / ITEMS_PER_ROW;
+                    var X = 8 + COL * 20;
+                    var Y = 30 + ROW * 24;
                     var BR = lupItems[I];
 
-                    // Draw item background
-                    screens.Ink(20, 0);
-                    screens.Bar(X, Y, X + 140, Y + 40);
+                    // Item background
+                    screens.Ink(0);
+                    screens.Bar(X, Y, X + 18, Y + 20);
 
-                    // Draw item icon
+                    // Item icon
                     if (BR > 0 && BR < 121)
                     {
                         var BOB_NR = BRON[BR, B_BOB];
                         if (BOB_NR > 0)
                         {
-                            screens.PasteBob(X + 4, Y + 4, BOB_NR);
+                            screens.PasteBob(X + 1, Y + 2, BROBY + BOB_NR);
                         }
                     }
 
-                    // Draw item name
-                    if (BR > 0 && BR < 121 && BRON_S[BR] != null)
-                    {
-                        screens.Ink(31, 20);
-                        screens.Text(X + 30, Y + 18, BRON_S[BR]);
-                    }
-
-                    // Set zone for click
-                    screens.SetZone(I + 1, X, Y, X + 140, Y + 40);
+                    // Zone for click
+                    screens.SetZone(10 + I, X, Y, X + 20, Y + 22);
                 }
 
-                // Taken count
-                screens.Ink(1, 0);
-                screens.Text(40, 340, TR("BATTLE_TAKEN", varTakenCount));
+                // Stats: survivors
+                var WOJ = 0;
+                for (var I = 1; I <= 10; I++)
+                {
+                    if (ARMIA[ARM, I, TE] > 0) WOJ++;
+                }
+                OUTLINE(10, 130, TR("BATTLE_SURVIVORS", WOJ), 31, 0);
+                OUTLINE(10, 150, TR("BATTLE_TAKEN", varTakenCount), 31, 0);
 
-                // No space warning
                 if (varNoSpace)
                 {
-                    screens.Ink(31, 0);
-                    screens.Text(40, 360, TR("BATTLE_NO_SPACE"));
+                    OUTLINE(10, 170, TR("BATTLE_NO_SPACE"), 31, 0);
                 }
 
-                // Buttons
-                var BTN_TAKE_ALL = 100;
-                var BTN_NEXT = 101;
-                GADGET(400, 330, 110, 20, TR("BATTLE_TAKE_ALL"), 8, 1, 6, 31, BTN_TAKE_ALL);
-                GADGET(530, 330, 70, 20, TR("BATTLE_NEXT"), 8, 1, 6, 31, BTN_NEXT);
+                screens.Screen(1);
+
+                // --- Screen 1: draw backpack + warrior info ---
+                // Clear backpack area
+                screens.Ink(0);
+                screens.Bar(235, 3, 235 + 78, 3 + 38);
+
+                // Draw backpack contents (2 rows x 4 columns)
+                for (var I = 0; I <= 3; I++)
+                {
+                    if (ARMIA[ARM, NR, TPLECAK + I] > 0)
+                    {
+                        var B1 = BRON[ARMIA[ARM, NR, TPLECAK + I], B_BOB];
+                        screens.PasteBob(236 + I * 20, 4, BROBY + B1);
+                    }
+                    screens.SetZone(40 + I, 236 + I * 20, 4, 256 + I * 20, 24);
+                    if (ARMIA[ARM, NR, TPLECAK + I + 4] > 0)
+                    {
+                        var B2 = BRON[ARMIA[ARM, NR, TPLECAK + I + 4], B_BOB];
+                        screens.PasteBob(236 + I * 20, 24, BROBY + B2);
+                    }
+                    screens.SetZone(44 + I, 236 + I * 20, 24, 256 + I * 20, 44);
+                }
+
+                // Warrior name
+                screens.GrWriting(0);
+                OUTLINE(6, 40, ARMIA_S[ARM, NR] + " " + RASY_S[ARMIA[ARM, NR, TRASA]], 30, 1);
 
                 screens.View();
                 varNoSpace = false;
 
-                // Wait for input
+                // --- Wait for input ---
                 while (true)
                 {
                     if (screens.MouseClick() == 1)
                     {
                         var STREFA = screens.MouseZone();
+                        var CTRL = screens.IsKeyDown(KeyLeftControl) || screens.IsKeyDown(KeyRightControl);
 
-                        // Click on item (zones 1-16)
-                        if (STREFA >= 1 && STREFA <= shown)
+                        // Up arrow - next alive warrior
+                        if (STREFA == 1)
                         {
-                            var idx = STREFA - 1;
-                            var BR = lupItems[idx];
-                            if (BR > 0)
+                            var OLD_NR = NR;
+                            do
                             {
-                                var placed = false;
-                                for (var W = 1; W <= 10; W++)
-                                {
-                                    if (ARMIA[ARM, W, TE] > 0)
-                                    {
-                                        for (var S = 0; S <= 7; S++)
-                                        {
-                                            if (ARMIA[ARM, W, TPLECAK + S] == 0)
-                                            {
-                                                ARMIA[ARM, W, TPLECAK + S] = BR;
-                                                lupItems.RemoveAt(idx);
-                                                varTakenCount++;
-                                                placed = true;
-                                                break;
-                                            }
-                                        }
-                                    }
-                                    if (placed) break;
-                                }
-                                if (!placed) varNoSpace = true;
-                            }
-                            break; // Redraw screen
+                                amos.Add(ref NR, 1, 1, 10);
+                            } while (ARMIA[ARM, NR, TE] <= 0 && NR != OLD_NR);
+                            break; // Redraw
                         }
 
-                        // Take all button
-                        if (STREFA == BTN_TAKE_ALL)
+                        // Down arrow - previous alive warrior
+                        if (STREFA == 2)
+                        {
+                            var OLD_NR = NR;
+                            do
+                            {
+                                amos.Add(ref NR, -1, 1, 10);
+                            } while (ARMIA[ARM, NR, TE] <= 0 && NR != OLD_NR);
+                            break; // Redraw
+                        }
+
+                        // "Dalej" button
+                        if (STREFA == 3)
+                        {
+                            KONIEC = true;
+                            break;
+                        }
+
+                        // "Zabierz wszystko" button
+                        if (STREFA == 4)
                         {
                             var i = 0;
                             while (i < lupItems.Count)
@@ -3456,22 +3480,145 @@ namespace AmigaNet.Legion
                                     }
                                     if (placed) break;
                                 }
-                                if (!placed) i++; // Skip items that don't fit
+                                if (!placed) i++;
                             }
-                            break; // Redraw screen
+                            break; // Redraw
                         }
 
-                        // Next button
-                        if (STREFA == BTN_NEXT)
+                        // Click on item in grid (zones 10-29) — drag and drop
+                        if (STREFA >= 10 && STREFA < 10 + gridCount)
                         {
-                            KONIEC = true;
-                            break;
+                            var idx = STREFA - 10;
+                            var BR = lupItems[idx];
+                            if (BR > 0)
+                            {
+                                // Show item name
+                                var BRO1_S = BRON2_S[BRON[BR, B_TYP]];
+                                var BRO2_S = BRON_S[BR];
+                                var ITEM_NAME = BRO1_S + " " + BRO2_S;
+
+                                if (CTRL)
+                                {
+                                    // Ctrl+click: take directly to backpack
+                                    var placed = false;
+                                    for (var S = 0; S <= 7; S++)
+                                    {
+                                        if (ARMIA[ARM, NR, TPLECAK + S] == 0)
+                                        {
+                                            ARMIA[ARM, NR, TPLECAK + S] = BR;
+                                            lupItems.RemoveAt(idx);
+                                            varTakenCount++;
+                                            placed = true;
+                                            break;
+                                        }
+                                    }
+                                    if (!placed) varNoSpace = true;
+                                    break; // Redraw
+                                }
+
+                                // Remove item from grid visually
+                                var COL = idx % ITEMS_PER_ROW;
+                                var ROW = idx / ITEMS_PER_ROW;
+                                var GX = 8 + COL * 20;
+                                var GY = 30 + ROW * 24;
+                                screens.Screen(2);
+                                screens.Ink(0);
+                                screens.Bar(GX, GY, GX + 18, GY + 20);
+
+                                // Show item name in description area
+                                screens.GetBlock(1, 10, 90, 200, 30);
+                                screens.Ink(0);
+                                screens.Bar(10, 90, 210, 120);
+                                OUTLINE(10, 100, ITEM_NAME, 31, 0);
+                                screens.View();
+
+                                // Enter drag mode — item follows cursor as sprite
+                                var BB = BRON[BR, B_BOB] + BROBY;
+                                screens.HotSpot(BB, 11);
+                                screens.Sprite(53, screens.XMouse(), screens.YMouse(), BB);
+
+                                var DRAG_DONE = false;
+                                while (!DRAG_DONE)
+                                {
+                                    screens.Sprite(53, screens.XMouse(), screens.YMouse());
+                                    screens.WaitVbl();
+                                    if (screens.MouseClick() == 1)
+                                    {
+                                        screens.SpriteOff(53);
+                                        screens.WaitVbl();
+                                        screens.HotSpot(BB, 0);
+
+                                        // Check drop target — get mouse position on screen 1
+                                        screens.Screen(1);
+                                        var XM = screens.XScreen(screens.XMouse());
+                                        var YM = screens.YScreen(screens.YMouse());
+                                        var J = screens.Zone(XM, YM);
+
+                                        if (J >= 40 && J < 48)
+                                        {
+                                            // Dropped on backpack slot
+                                            var J2 = J - 40;
+                                            if (ARMIA[ARM, NR, TPLECAK + J2] == 0)
+                                            {
+                                                ARMIA[ARM, NR, TPLECAK + J2] = BR;
+                                                lupItems.RemoveAt(idx);
+                                                varTakenCount++;
+                                                DRAG_DONE = true;
+                                            }
+                                            else
+                                            {
+                                                // Slot occupied — put back
+                                                screens.Screen(2);
+                                                screens.PasteBob(GX + 1, GY + 2, BB);
+                                                DRAG_DONE = true;
+                                            }
+                                        }
+                                        else if (J >= 10 && J < 38)
+                                        {
+                                            // Dropped on grid — put back
+                                            screens.Screen(2);
+                                            screens.PasteBob(GX + 1, GY + 2, BB);
+                                            DRAG_DONE = true;
+                                        }
+                                        else
+                                        {
+                                            // Dropped nowhere — put back
+                                            screens.Screen(2);
+                                            screens.PasteBob(GX + 1, GY + 2, BB);
+                                            DRAG_DONE = true;
+                                        }
+                                    }
+                                }
+                                break; // Redraw
+                            }
+                        }
+
+                        // Click on backpack slot (zones 40-47) — show item info
+                        if (STREFA >= 40 && STREFA < 48)
+                        {
+                            var J2 = STREFA - 40;
+                            var BR = ARMIA[ARM, NR, TPLECAK + J2];
+                            if (BR > 0)
+                            {
+                                var BRO1_S = BRON2_S[BRON[BR, B_TYP]];
+                                var BRO2_S = BRON_S[BR];
+                                screens.Screen(2);
+                                screens.GetBlock(1, 10, 90, 200, 30);
+                                screens.Ink(0);
+                                screens.Bar(10, 90, 210, 120);
+                                OUTLINE(10, 100, BRO1_S + " " + BRO2_S, 31, 0);
+                                screens.View();
+                            }
                         }
                     }
                 }
             }
 
-            // Restore screen 1 to original battle size
+            // --- Restore screens to battle state ---
+            screens.ScreenClose(2);
+            screens.ScreenOpen(2, 80, 50, 32, PixelMode.Lowres);
+            screens.ScreenDisplay(2, 252, 140, 80, 50);
+
             screens.ScreenClose(1);
             screens.ScreenOpen(1, 320, 160, 32, PixelMode.Lowres);
             screens.ScreenDisplay(1, 130, 275, 320, 25);
