@@ -730,10 +730,12 @@
                     if (ARMIA[ARM, NUMER, TSI] + SI > MXSI)
                     {
                         SI = MXSI - ARMIA[ARM, NUMER, TSI];
+                        if (SI < 0) SI = 0;
                     }
                     if (ARMIA[ARM, NUMER, TSZ] + SZ > MXSZ)
                     {
                         SZ = MXSZ - ARMIA[ARM, NUMER, TSZ];
+                        if (SZ < 0) SZ = 0;
                     }
                 }
                 ARMIA[ARM, NUMER, TSI] += SI * ZNAK;

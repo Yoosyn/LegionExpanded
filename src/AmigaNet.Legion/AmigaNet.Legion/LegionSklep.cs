@@ -106,6 +106,7 @@ namespace AmigaNet.Legion
                 if (screens.MouseClick() == 1)
                 {
                     var I = screens.MouseZone();
+                    var CTRL = screens.IsKeyDown(KeyLeftControl) || screens.IsKeyDown(KeyRightControl);
                     if (I == 1)
                     {
                         GADGET(210, 2, 20, 16, " " + UpArrowChar, 0, 5, 10, 1, 0);
@@ -146,26 +147,62 @@ namespace AmigaNet.Legion
                             var CENA = BRON[BRO, B_CENA] + ((BRON[BRO, B_CENA] * MIASTA[MIASTO, TYPB, M_MUR]) / 100);
                             if (GRACZE[1, 1] - CENA >= 0)
                             {
-                                var ZNAK = -1;
-                                A_S = BRO1_S + " " + BRO2_S;
-                                var B_S = "kosztuje :" + CENA;
-                                SKLEP_NAPISZ(A_S, B_S);
-                                SKLEP[SNR, I2] = 0;
-                                var X = 0;
-                                var Y = 0;
-                                if (I2 < 10)
+                                if (CTRL)
                                 {
-                                    Y = 4;
-                                    X = 8 + I2 * 20;
+                                    // Ctrl+Click: buy directly to first empty backpack slot
+                                    var placed = false;
+                                    for (var slot = 0; slot <= 7; slot++)
+                                    {
+                                        if (ARMIA[A, NR, TPLECAK + slot] == 0)
+                                        {
+                                            ARMIA[A, NR, TPLECAK + slot] = BRO;
+                                            placed = true;
+                                            break;
+                                        }
+                                    }
+                                    if (placed)
+                                    {
+                                        GRACZE[1, 1] -= CENA;
+                                        SKLEP[SNR, I2] = 0;
+                                        var X = 0;
+                                        var Y = 0;
+                                        if (I2 < 10) { Y = 4; X = 8 + I2 * 20; }
+                                        else { Y = 24; X = 8 + (I2 - 10) * 20; }
+                                        screens.Ink(0);
+                                        screens.Bar(X, Y, X + 16, Y + 16);
+                                        SKLEP_SZMAL();
+                                        SKLEP_PLECAK(A, NR);
+                                        A_S = BRO1_S + " " + BRO2_S;
+                                        SKLEP_NAPISZ(A_S, "Kupiono za :" + CENA);
+                                    }
+                                    else
+                                    {
+                                        SKLEP_NAPISZ(BRO1_S + " " + BRO2_S, "Brak miejsca w plecaku");
+                                    }
                                 }
                                 else
                                 {
-                                    Y = 24;
-                                    X = 8 + (I2 - 10) * 20;
+                                    var ZNAK = -1;
+                                    A_S = BRO1_S + " " + BRO2_S;
+                                    var B_S = "kosztuje :" + CENA;
+                                    SKLEP_NAPISZ(A_S, B_S);
+                                    SKLEP[SNR, I2] = 0;
+                                    var X = 0;
+                                    var Y = 0;
+                                    if (I2 < 10)
+                                    {
+                                        Y = 4;
+                                        X = 8 + I2 * 20;
+                                    }
+                                    else
+                                    {
+                                        Y = 24;
+                                        X = 8 + (I2 - 10) * 20;
+                                    }
+                                    screens.Ink(0);
+                                    screens.Bar(X, Y, X + 16, Y + 16);
+                                    SKLEP_PICK(BRO, SNR, A, NR, CENA, ZNAK, ref KONIEC);
                                 }
-                                screens.Ink(0);
-                                screens.Bar(X, Y, X + 16, Y + 16);
-                                SKLEP_PICK(BRO, SNR, A, NR, CENA, ZNAK, ref KONIEC);
                             }
                             else
                             {
@@ -181,32 +218,41 @@ namespace AmigaNet.Legion
                         var BRO = ARMIA[A, NR, TPLECAK + I2];
                         if (BRO > 0)
                         {
-                            var B1 = BRON[BRO, B_BOB];
-                            var BRO1_S = BRON2_S[BRON[BRO, B_TYP]];
-                            var BRO2_S = BRON_S[BRO];
-                            A_S = BRO1_S + " " + BRO2_S;
-                            var TYPB = BRON[BRO, B_TYP];
-                            var CENA = BRON[BRO, B_CENA] + ((BRON[BRO, B_CENA] * MIASTA[MIASTO, TYPB, M_MUR]) / 100);
-                            CENA = CENA - ((CENA * 10) / 100);
-                            var ZNAK = 1;
-                            var B_S = "Zapłacę " + CENA;
-                            SKLEP_NAPISZ(A_S, B_S);
-                            ARMIA[A, NR, TPLECAK + I2] = 0;
-                            var X = 0;
-                            var Y = 0;
-                            if (I2 < 4)
+                            if (CTRL)
                             {
-                                Y = 4;
-                                X = 236 + I2 * 20;
+                                // Ctrl+Click: auto-equip from backpack
+                                SKLEP_AUTO_EQUIP(BRO, I2, A, NR);
+                                SKLEP_PLECAK(A, NR);
                             }
                             else
                             {
-                                Y = 24;
-                                X = 236 + (I2 - 4) * 20;
+                                var B1 = BRON[BRO, B_BOB];
+                                var BRO1_S = BRON2_S[BRON[BRO, B_TYP]];
+                                var BRO2_S = BRON_S[BRO];
+                                A_S = BRO1_S + " " + BRO2_S;
+                                var TYPB = BRON[BRO, B_TYP];
+                                var CENA = BRON[BRO, B_CENA] + ((BRON[BRO, B_CENA] * MIASTA[MIASTO, TYPB, M_MUR]) / 100);
+                                CENA = CENA - ((CENA * 10) / 100);
+                                var ZNAK = 1;
+                                var B_S = "Zapłacę " + CENA;
+                                SKLEP_NAPISZ(A_S, B_S);
+                                ARMIA[A, NR, TPLECAK + I2] = 0;
+                                var X = 0;
+                                var Y = 0;
+                                if (I2 < 4)
+                                {
+                                    Y = 4;
+                                    X = 236 + I2 * 20;
+                                }
+                                else
+                                {
+                                    Y = 24;
+                                    X = 236 + (I2 - 4) * 20;
+                                }
+                                screens.Ink(0);
+                                screens.Bar(X, Y, X + 16, Y + 16);
+                                SKLEP_PICK(BRO, SNR, A, NR, CENA, ZNAK, ref KONIEC);
                             }
-                            screens.Ink(0);
-                            screens.Bar(X, Y, X + 16, Y + 16);
-                            SKLEP_PICK(BRO, SNR, A, NR, CENA, ZNAK, ref KONIEC);
                         }
                     }
                 }
@@ -469,6 +515,74 @@ namespace AmigaNet.Legion
             {
                 //Mvolume I;
                 screens.WaitVbl();
+            }
+        }
+
+        /// <summary>
+        /// Ctrl+Click in shop: auto-equip item from backpack (data-only, no equipment slot visuals).
+        /// </summary>
+        void SKLEP_AUTO_EQUIP(int BR, int backpackSlot, int A, int NR)
+        {
+            var PLACE = BRON[BR, B_PLACE];
+            var TYP = BRON[BR, B_TYP];
+
+            // Arrows/ammo - consume into ammo pool
+            if (TYP == 17)
+            {
+                ARMIA[A, NR, TPLECAK + backpackSlot] = 0;
+                amos.Add(ref ARMIA[A, 0, TAMO], BRON[BR, B_DOSW], ARMIA[A, 0, TAMO], 320);
+                WAGA(A, NR);
+                return;
+            }
+
+            var equipped = false;
+
+            if (PLACE == 1 && ARMIA[A, NR, TGLOWA] == 0)
+            {
+                ARMIA[A, NR, TGLOWA] = BR;
+                PRZELICZ(0, 1);
+                if (TYP == 13 || TYP == 18) ARMIA[A, NR, TGLOWA] = 0;
+                equipped = true;
+            }
+            else if (PLACE == 2 && ARMIA[A, NR, TKORP] == 0)
+            {
+                ARMIA[A, NR, TKORP] = BR;
+                PRZELICZ(1, 1);
+                if (TYP == 13) ARMIA[A, NR, TKORP] = 0;
+                equipped = true;
+            }
+            else if (PLACE == 3 && ARMIA[A, NR, TNOGI] == 0)
+            {
+                ARMIA[A, NR, TNOGI] = BR;
+                PRZELICZ(2, 1);
+                equipped = true;
+            }
+            else if (PLACE == 4)
+            {
+                if (ARMIA[A, NR, TLEWA] == 0)
+                {
+                    ARMIA[A, NR, TLEWA] = BR;
+                    PRZELICZ(3, 1);
+                    equipped = true;
+                }
+                else if (ARMIA[A, NR, TPRAWA] == 0)
+                {
+                    ARMIA[A, NR, TPRAWA] = BR;
+                    PRZELICZ(4, 1);
+                    equipped = true;
+                }
+            }
+            else if (PLACE == 6 && ARMIA[A, NR, TLEWA] == 0 && ARMIA[A, NR, TPRAWA] == 0)
+            {
+                ARMIA[A, NR, TLEWA] = BR;
+                PRZELICZ(3, 1);
+                equipped = true;
+            }
+
+            if (equipped)
+            {
+                ARMIA[A, NR, TPLECAK + backpackSlot] = 0;
+                WAGA(A, NR);
             }
         }
     }
