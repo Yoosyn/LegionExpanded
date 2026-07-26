@@ -60,6 +60,18 @@ namespace AmigaNet.Legion
             ["BATTLE_NEXT"] = "Dalej",
             ["BATTLE_TAKEN"] = "Zabrano: {0} przedmiotów",
             ["BATTLE_NO_SPACE"] = "Brak miejsca w plecakach!",
+            ["BATTLE_ENEMIES_KILLED"] = "Pokonani wrogowie: {0}",
+            ["BATTLE_LOOT_COUNT"] = "Przedmioty na ziemi: {0}",
+            ["BATTLE_PAGE"] = "Strona {0}/{1}",
+            ["BATTLE_ITEM_DMG"] = "Obrażenia: {0}",
+            ["BATTLE_ITEM_ARM"] = "Obrona: {0}",
+            ["BATTLE_ITEM_SPD"] = "Szybkość: {0}",
+            ["BATTLE_ITEM_WGT"] = "Waga: {0}",
+            ["BATTLE_ITEM_PRICE"] = "Cena: {0}",
+            ["BATTLE_WARRIOR_WEIGHT"] = "Waga: {0}/{1}",
+            ["BATTLE_OVERWEIGHT"] = "Przeciążenie!",
+            ["BATTLE_DISCARDED"] = "Odrzucono przedmiot",
+            ["BATTLE_EQUIPPED"] = "Założono ekwipunek",
         };
 
         private static readonly Dictionary<string, string> STRINGS_EN = new Dictionary<string, string>
@@ -116,6 +128,18 @@ namespace AmigaNet.Legion
             ["BATTLE_NEXT"] = "Next",
             ["BATTLE_TAKEN"] = "Taken: {0} items",
             ["BATTLE_NO_SPACE"] = "No space in backpacks!",
+            ["BATTLE_ENEMIES_KILLED"] = "Enemies defeated: {0}",
+            ["BATTLE_LOOT_COUNT"] = "Items on ground: {0}",
+            ["BATTLE_PAGE"] = "Page {0}/{1}",
+            ["BATTLE_ITEM_DMG"] = "Damage: {0}",
+            ["BATTLE_ITEM_ARM"] = "Armor: {0}",
+            ["BATTLE_ITEM_SPD"] = "Speed: {0}",
+            ["BATTLE_ITEM_WGT"] = "Weight: {0}",
+            ["BATTLE_ITEM_PRICE"] = "Price: {0}",
+            ["BATTLE_WARRIOR_WEIGHT"] = "Weight: {0}/{1}",
+            ["BATTLE_OVERWEIGHT"] = "Overweight!",
+            ["BATTLE_DISCARDED"] = "Item discarded",
+            ["BATTLE_EQUIPPED"] = "Equipment equipped",
         };
 
         private string TR(string key, params object[] args)

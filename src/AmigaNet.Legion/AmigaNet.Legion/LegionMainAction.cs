@@ -2759,6 +2759,15 @@ namespace AmigaNet.Legion
                         amos.Add(ref ARMIA[A, I, TDOSW], amos.Rnd(MUNDRY), ARMIA[A, I, TDOSW], 95);
                         ZABIJ(B, TARGET, 0);
                     }
+                    else if (ENERGIA > 0)
+                    {
+                        var healed = ENP - ARMIA[B, TARGET, TE];
+                        if (healed > 0)
+                        {
+                            var MUNDRY = RASY[ARMIA[A, I, TRASA], 6];
+                            amos.Add(ref ARMIA[A, I, TDOSW], (healed / 10) + 1, ARMIA[A, I, TDOSW], 95);
+                        }
+                    }
                     ARMIA[A, I, TTRYB] = 0;
                     ARMIA[B, TARGET, TE] = ENP;
                     screens.BobOff(I2 + 30);
@@ -3301,8 +3310,14 @@ namespace AmigaNet.Legion
                 if (ARMIA[ARM, I, TE] > 0) { NR = I; break; }
             }
 
-            // --- Setup screens like the shop ---
-            // Screen 2: main item grid (640x512 canvas, displayed at 130,40 with 320x244 visible)
+            // Count enemies killed
+            var enemiesKilled = 0;
+            for (var I = 1; I <= 10; I++)
+            {
+                if (ARMIA[WRG, I, TE] <= 0) enemiesKilled++;
+            }
+
+            // --- Setup screens ---
             screens.ScreenClose(2);
             screens.ScreenOpen(2, 640, 512, 32, PixelMode.Lowres);
             screens.ScreenDisplay(2, 130, 40, 320, 244);
@@ -3311,7 +3326,6 @@ namespace AmigaNet.Legion
             screens.SetFont(FON1);
             screens.Cls(0);
 
-            // Screen 1: backpack + warrior info (320x44, displayed at 130,255)
             screens.ScreenClose(1);
             screens.ScreenOpen(1, 320, 160, 32, PixelMode.Lowres);
             screens.ScreenDisplay(1, 130, 255, 320, 44);
@@ -3319,81 +3333,114 @@ namespace AmigaNet.Legion
             screens.ReserveZone(100);
             screens.SetFont(FON1);
             screens.Colour(0, 3, 1, 0);
-            // Draw backpack panel background
             GADGET(234, 2, 80, 40, "", 19, 6, 0, 1, -1);
-            // Up/Down warrior arrows
             GADGET(210, 2, 20, 16, " " + UpArrowChar, 5, 0, 8, 1, 1);
             GADGET(210, 24, 20, 16, " " + DownArrowChar, 5, 0, 8, 1, 2);
-            // "Dalej" button
-            GADGET(6, 2, 120, 38, TR("BATTLE_NEXT"), 26, 24, 25, 30, 3);
-            // "Zabierz wszystko" button
-            GADGET(130, 2, 76, 38, TR("BATTLE_TAKE_ALL"), 26, 24, 25, 30, 4);
+            GADGET(6, 2, 100, 38, TR("BATTLE_NEXT"), 26, 24, 25, 30, 3);
+            GADGET(110, 2, 96, 38, TR("BATTLE_TAKE_ALL"), 26, 24, 25, 30, 4);
 
             var KONIEC = false;
             varTakenCount = 0;
+            varNoSpace = false;
+            var page = 0;
+            var statusMsg = "";
+            const int ITEMS_PER_PAGE = 20;
+            const int ITEMS_PER_ROW = 10;
 
             while (!KONIEC)
             {
-                // --- Screen 2: draw item grid ---
+                var totalPages = (lupItems.Count + ITEMS_PER_PAGE - 1) / ITEMS_PER_PAGE;
+                if (totalPages < 1) totalPages = 1;
+                if (page >= totalPages) page = totalPages - 1;
+                if (page < 0) page = 0;
+                var pageStart = page * ITEMS_PER_PAGE;
+                var gridCount = Math.Min(lupItems.Count - pageStart, ITEMS_PER_PAGE);
+                if (gridCount < 0) gridCount = 0;
+
+                // --- Screen 2: draw everything ---
                 screens.Screen(2);
                 screens.Cls(0);
                 screens.SetFont(FON1);
 
-                // Title
-                OUTLINE(10, 10, TR("BATTLE_LOOT"), 31, 0);
-
-                // Draw items in 2 rows x 10 columns (same as shop)
-                var ITEMS_PER_ROW = 10;
-                var gridCount = Math.Min(lupItems.Count, 20);
-
-                for (var I = 0; I < gridCount; I++)
-                {
-                    var COL = I % ITEMS_PER_ROW;
-                    var ROW = I / ITEMS_PER_ROW;
-                    var X = 8 + COL * 20;
-                    var Y = 30 + ROW * 24;
-                    var BR = lupItems[I];
-
-                    // Item background
-                    screens.Ink(0);
-                    screens.Bar(X, Y, X + 18, Y + 20);
-
-                    // Item icon
-                    if (BR > 0 && BR < 121)
-                    {
-                        var BOB_NR = BRON[BR, B_BOB];
-                        if (BOB_NR > 0)
-                        {
-                            screens.PasteBob(X + 1, Y + 2, BROBY + BOB_NR);
-                        }
-                    }
-
-                    // Zone for click
-                    screens.SetZone(10 + I, X, Y, X + 20, Y + 22);
-                }
-
-                // Stats: survivors
+                // Title + battle stats
+                OUTLINE(10, 8, TR("BATTLE_VICTORY"), 31, 0);
                 var WOJ = 0;
                 for (var I = 1; I <= 10; I++)
                 {
                     if (ARMIA[ARM, I, TE] > 0) WOJ++;
                 }
-                OUTLINE(10, 130, TR("BATTLE_SURVIVORS", WOJ), 31, 0);
-                OUTLINE(10, 150, TR("BATTLE_TAKEN", varTakenCount), 31, 0);
+                OUTLINE(10, 22, TR("BATTLE_SURVIVORS", WOJ), 30, 0);
+                OUTLINE(170, 22, TR("BATTLE_ENEMIES_KILLED", enemiesKilled), 30, 0);
+                OUTLINE(10, 34, TR("BATTLE_LOOT_COUNT", lupItems.Count), 30, 0);
+                OUTLINE(170, 34, TR("BATTLE_TAKEN", varTakenCount), 30, 0);
 
-                if (varNoSpace)
+                // Page arrows (zones 5, 6)
+                if (totalPages > 1)
                 {
-                    OUTLINE(10, 170, TR("BATTLE_NO_SPACE"), 31, 0);
+                    GADGET(270, 46, 20, 12, "<", 5, 0, 8, 30, 5);
+                    GADGET(292, 46, 20, 12, ">", 5, 0, 8, 30, 6);
+                    OUTLINE(220, 50, TR("BATTLE_PAGE", page + 1, totalPages), 30, 0);
                 }
 
-                screens.Screen(1);
+                // Item grid (2 rows x 10 columns)
+                for (var I = 0; I < gridCount; I++)
+                {
+                    var COL = I % ITEMS_PER_ROW;
+                    var ROW = I / ITEMS_PER_ROW;
+                    var X = 8 + COL * 30;
+                    var Y = 60 + ROW * 34;
+                    var BR = lupItems[pageStart + I];
 
-                // --- Screen 1: draw backpack + warrior info ---
-                // Clear backpack area
+                    screens.Ink(0);
+                    screens.Bar(X, Y, X + 26, Y + 30);
+                    screens.Ink(5);
+                    screens.Box(X, Y, X + 26, Y + 30);
+
+                    if (BR > 0 && BR < 121)
+                    {
+                        var BOB_NR = BRON[BR, B_BOB];
+                        if (BOB_NR > 0)
+                        {
+                            screens.PasteBob(X + 3, Y + 2, BROBY + BOB_NR);
+                        }
+                        // Price under icon
+                        screens.Ink(30);
+                        screens.Text(X + 2, Y + 26, amos.Str_S(BRON[BR, B_CENA]));
+                    }
+
+                    screens.SetZone(10 + I, X, Y, X + 28, Y + 32);
+                }
+
+                // Item stats panel area (y=130..190)
+                screens.Ink(0);
+                screens.Bar(8, 130, 310, 195);
+                screens.Ink(5);
+                screens.Box(8, 130, 310, 195);
+
+                // Weight info for current warrior
+                var curWeight = ARMIA[ARM, NR, TWAGA];
+                var capacity = ARMIA[ARM, NR, TEM];
+                OUTLINE(10, 200, TR("BATTLE_WARRIOR_WEIGHT", curWeight, capacity), 30, 0);
+                if (curWeight > capacity)
+                {
+                    OUTLINE(170, 200, TR("BATTLE_OVERWEIGHT"), 25, 0);
+                }
+
+                // Status message
+                if (statusMsg != "")
+                {
+                    OUTLINE(10, 215, statusMsg, 31, 0);
+                }
+                if (varNoSpace)
+                {
+                    OUTLINE(10, 230, TR("BATTLE_NO_SPACE"), 25, 0);
+                }
+
+                // --- Screen 1: backpack + warrior info ---
+                screens.Screen(1);
                 screens.Ink(0);
                 screens.Bar(235, 3, 235 + 78, 3 + 38);
 
-                // Draw backpack contents (2 rows x 4 columns)
                 for (var I = 0; I <= 3; I++)
                 {
                     if (ARMIA[ARM, NR, TPLECAK + I] > 0)
@@ -3410,17 +3457,61 @@ namespace AmigaNet.Legion
                     screens.SetZone(44 + I, 236 + I * 20, 24, 256 + I * 20, 44);
                 }
 
-                // Warrior name
                 screens.GrWriting(0);
                 OUTLINE(6, 40, ARMIA_S[ARM, NR] + " " + RASY_S[ARMIA[ARM, NR, TRASA]], 30, 1);
 
                 screens.View();
                 varNoSpace = false;
+                statusMsg = "";
 
                 // --- Wait for input ---
                 while (true)
                 {
-                    if (screens.MouseClick() == 1)
+                    // Keyboard shortcuts
+                    var KEY = screens.Inkey_S();
+                    if (KEY != "")
+                    {
+                        var KLAW = screens.Scancode();
+                        if (KLAW == KeyEscape || KLAW == KeyEnter)
+                        {
+                            KONIEC = true;
+                            break;
+                        }
+                        if (KEY.ToLowerInvariant() == "a")
+                        {
+                            // Take all
+                            var i = 0;
+                            while (i < lupItems.Count)
+                            {
+                                var BR = lupItems[i];
+                                var placed = false;
+                                for (var W = 1; W <= 10; W++)
+                                {
+                                    if (ARMIA[ARM, W, TE] > 0)
+                                    {
+                                        for (var S = 0; S <= 7; S++)
+                                        {
+                                            if (ARMIA[ARM, W, TPLECAK + S] == 0)
+                                            {
+                                                ARMIA[ARM, W, TPLECAK + S] = BR;
+                                                WAGA(ARM, W);
+                                                lupItems.RemoveAt(i);
+                                                varTakenCount++;
+                                                placed = true;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                    if (placed) break;
+                                }
+                                if (!placed) { varNoSpace = true; i++; }
+                            }
+                            break; // Redraw
+                        }
+                    }
+
+                    var click = screens.MouseClick();
+                    if (click == 1)
                     {
                         var STREFA = screens.MouseZone();
                         var CTRL = screens.IsKeyDown(KeyLeftControl) || screens.IsKeyDown(KeyRightControl);
@@ -3429,22 +3520,16 @@ namespace AmigaNet.Legion
                         if (STREFA == 1)
                         {
                             var OLD_NR = NR;
-                            do
-                            {
-                                amos.Add(ref NR, 1, 1, 10);
-                            } while (ARMIA[ARM, NR, TE] <= 0 && NR != OLD_NR);
-                            break; // Redraw
+                            do { amos.Add(ref NR, 1, 1, 10); } while (ARMIA[ARM, NR, TE] <= 0 && NR != OLD_NR);
+                            break;
                         }
 
                         // Down arrow - previous alive warrior
                         if (STREFA == 2)
                         {
                             var OLD_NR = NR;
-                            do
-                            {
-                                amos.Add(ref NR, -1, 1, 10);
-                            } while (ARMIA[ARM, NR, TE] <= 0 && NR != OLD_NR);
-                            break; // Redraw
+                            do { amos.Add(ref NR, -1, 1, 10); } while (ARMIA[ARM, NR, TE] <= 0 && NR != OLD_NR);
+                            break;
                         }
 
                         // "Dalej" button
@@ -3471,6 +3556,7 @@ namespace AmigaNet.Legion
                                             if (ARMIA[ARM, W, TPLECAK + S] == 0)
                                             {
                                                 ARMIA[ARM, W, TPLECAK + S] = BR;
+                                                WAGA(ARM, W);
                                                 lupItems.RemoveAt(i);
                                                 varTakenCount++;
                                                 placed = true;
@@ -3480,23 +3566,32 @@ namespace AmigaNet.Legion
                                     }
                                     if (placed) break;
                                 }
-                                if (!placed) i++;
+                                if (!placed) { varNoSpace = true; i++; }
                             }
-                            break; // Redraw
+                            break;
                         }
 
-                        // Click on item in grid (zones 10-29) — drag and drop
+                        // Page prev
+                        if (STREFA == 5)
+                        {
+                            page--;
+                            break;
+                        }
+
+                        // Page next
+                        if (STREFA == 6)
+                        {
+                            page++;
+                            break;
+                        }
+
+                        // Click on item in grid (zones 10-29)
                         if (STREFA >= 10 && STREFA < 10 + gridCount)
                         {
                             var idx = STREFA - 10;
-                            var BR = lupItems[idx];
+                            var BR = lupItems[pageStart + idx];
                             if (BR > 0)
                             {
-                                // Show item name
-                                var BRO1_S = BRON2_S[BRON[BR, B_TYP]];
-                                var BRO2_S = BRON_S[BR];
-                                var ITEM_NAME = BRO1_S + " " + BRO2_S;
-
                                 if (CTRL)
                                 {
                                     // Ctrl+click: take directly to backpack
@@ -3506,33 +3601,40 @@ namespace AmigaNet.Legion
                                         if (ARMIA[ARM, NR, TPLECAK + S] == 0)
                                         {
                                             ARMIA[ARM, NR, TPLECAK + S] = BR;
-                                            lupItems.RemoveAt(idx);
+                                            WAGA(ARM, NR);
+                                            lupItems.RemoveAt(pageStart + idx);
                                             varTakenCount++;
                                             placed = true;
                                             break;
                                         }
                                     }
                                     if (!placed) varNoSpace = true;
-                                    break; // Redraw
+                                    break;
                                 }
 
-                                // Remove item from grid visually
-                                var COL = idx % ITEMS_PER_ROW;
-                                var ROW = idx / ITEMS_PER_ROW;
-                                var GX = 8 + COL * 20;
-                                var GY = 30 + ROW * 24;
+                                // Normal click: show item stats in panel
+                                var BRO1_S = BRON2_S[BRON[BR, B_TYP]];
+                                var BRO2_S = BRON_S[BR];
                                 screens.Screen(2);
                                 screens.Ink(0);
-                                screens.Bar(GX, GY, GX + 18, GY + 20);
-
-                                // Show item name in description area
-                                screens.GetBlock(1, 10, 90, 200, 30);
-                                screens.Ink(0);
-                                screens.Bar(10, 90, 210, 120);
-                                OUTLINE(10, 100, ITEM_NAME, 31, 0);
+                                screens.Bar(9, 131, 309, 194);
+                                OUTLINE(12, 138, BRO1_S + " " + BRO2_S, 31, 0);
+                                OUTLINE(12, 152, TR("BATTLE_ITEM_DMG", BRON[BR, B_SI]), 30, 0);
+                                OUTLINE(12, 163, TR("BATTLE_ITEM_ARM", BRON[BR, B_PAN]), 30, 0);
+                                OUTLINE(12, 174, TR("BATTLE_ITEM_SPD", BRON[BR, B_SZ]), 30, 0);
+                                OUTLINE(160, 152, TR("BATTLE_ITEM_WGT", BRON[BR, B_WAGA]), 30, 0);
+                                OUTLINE(160, 163, TR("BATTLE_ITEM_PRICE", BRON[BR, B_CENA]), 30, 0);
+                                var PLACE_S = "";
+                                var PL = BRON[BR, B_PLACE];
+                                if (PL == 1) PLACE_S = "Głowa";
+                                else if (PL == 2) PLACE_S = "Tułów";
+                                else if (PL == 3) PLACE_S = "Nogi";
+                                else if (PL == 4) PLACE_S = "Jednoręczna";
+                                else if (PL == 6) PLACE_S = "Dwuręczna";
+                                if (PLACE_S != "") OUTLINE(160, 174, PLACE_S, 30, 0);
                                 screens.View();
 
-                                // Enter drag mode — item follows cursor as sprite
+                                // Enter drag mode
                                 var BB = BRON[BR, B_BOB] + BROBY;
                                 screens.HotSpot(BB, 11);
                                 screens.Sprite(53, screens.XMouse(), screens.YMouse(), BB);
@@ -3548,7 +3650,6 @@ namespace AmigaNet.Legion
                                         screens.WaitVbl();
                                         screens.HotSpot(BB, 0);
 
-                                        // Check drop target — get mouse position on screen 1
                                         screens.Screen(1);
                                         var XM = screens.XScreen(screens.XMouse());
                                         var YM = screens.YScreen(screens.YMouse());
@@ -3556,60 +3657,69 @@ namespace AmigaNet.Legion
 
                                         if (J >= 40 && J < 48)
                                         {
-                                            // Dropped on backpack slot
                                             var J2 = J - 40;
                                             if (ARMIA[ARM, NR, TPLECAK + J2] == 0)
                                             {
                                                 ARMIA[ARM, NR, TPLECAK + J2] = BR;
-                                                lupItems.RemoveAt(idx);
+                                                WAGA(ARM, NR);
+                                                lupItems.RemoveAt(pageStart + idx);
                                                 varTakenCount++;
-                                                DRAG_DONE = true;
-                                            }
-                                            else
-                                            {
-                                                // Slot occupied — put back
-                                                screens.Screen(2);
-                                                screens.PasteBob(GX + 1, GY + 2, BB);
-                                                DRAG_DONE = true;
                                             }
                                         }
-                                        else if (J >= 10 && J < 38)
-                                        {
-                                            // Dropped on grid — put back
-                                            screens.Screen(2);
-                                            screens.PasteBob(GX + 1, GY + 2, BB);
-                                            DRAG_DONE = true;
-                                        }
-                                        else
-                                        {
-                                            // Dropped nowhere — put back
-                                            screens.Screen(2);
-                                            screens.PasteBob(GX + 1, GY + 2, BB);
-                                            DRAG_DONE = true;
-                                        }
+                                        DRAG_DONE = true;
                                     }
                                 }
-                                break; // Redraw
+                                break;
                             }
                         }
 
-                        // Click on backpack slot (zones 40-47) — show item info
+                        // Click on backpack slot (zones 40-47)
                         if (STREFA >= 40 && STREFA < 48)
                         {
                             var J2 = STREFA - 40;
                             var BR = ARMIA[ARM, NR, TPLECAK + J2];
                             if (BR > 0)
                             {
+                                if (CTRL)
+                                {
+                                    // Ctrl+Click: auto-equip
+                                    SKLEP_AUTO_EQUIP(BR, J2, ARM, NR);
+                                    statusMsg = TR("BATTLE_EQUIPPED");
+                                    break;
+                                }
+
+                                // Normal click: show item stats
                                 var BRO1_S = BRON2_S[BRON[BR, B_TYP]];
                                 var BRO2_S = BRON_S[BR];
                                 screens.Screen(2);
-                                screens.GetBlock(1, 10, 90, 200, 30);
                                 screens.Ink(0);
-                                screens.Bar(10, 90, 210, 120);
-                                OUTLINE(10, 100, BRO1_S + " " + BRO2_S, 31, 0);
+                                screens.Bar(9, 131, 309, 194);
+                                OUTLINE(12, 138, BRO1_S + " " + BRO2_S, 31, 0);
+                                OUTLINE(12, 152, TR("BATTLE_ITEM_DMG", BRON[BR, B_SI]), 30, 0);
+                                OUTLINE(12, 163, TR("BATTLE_ITEM_ARM", BRON[BR, B_PAN]), 30, 0);
+                                OUTLINE(12, 174, TR("BATTLE_ITEM_SPD", BRON[BR, B_SZ]), 30, 0);
+                                OUTLINE(160, 152, TR("BATTLE_ITEM_WGT", BRON[BR, B_WAGA]), 30, 0);
+                                OUTLINE(160, 163, TR("BATTLE_ITEM_PRICE", BRON[BR, B_CENA]), 30, 0);
                                 screens.View();
                             }
                         }
+                    }
+
+                    // Right-click: discard grid item, or exit if elsewhere
+                    if (click == 2)
+                    {
+                        var STREFA = screens.MouseZone();
+                        if (STREFA >= 10 && STREFA < 10 + gridCount)
+                        {
+                            var idx = STREFA - 10;
+                            lupItems.RemoveAt(pageStart + idx);
+                            statusMsg = TR("BATTLE_DISCARDED");
+                        }
+                        else
+                        {
+                            KONIEC = true;
+                        }
+                        break;
                     }
                 }
             }
