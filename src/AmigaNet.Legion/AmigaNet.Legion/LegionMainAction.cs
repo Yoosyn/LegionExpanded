@@ -3285,6 +3285,19 @@ namespace AmigaNet.Legion
             screens.ResetZone(NR);
         }
 
+        int GetLootMouseZone()
+        {
+            screens.Screen(2);
+            var z2 = screens.MouseZone();
+            if (z2 > 0) return z2;
+
+            screens.Screen(1);
+            var z1 = screens.MouseZone();
+            if (z1 > 0) return z1;
+
+            return 0;
+        }
+
         void PODSUMOWANIE_BITWY()
         {
             if (WYNIK_AKCJI != 1) return;
@@ -3411,7 +3424,7 @@ namespace AmigaNet.Legion
                     screens.SetZone(10 + I, X, Y, X + 28, Y + 32);
                 }
 
-                // Item stats panel area (y=130..190)
+                // Item stats panel area (y=130..195)
                 screens.Ink(0);
                 screens.Bar(8, 130, 310, 195);
                 screens.Ink(5);
@@ -3485,27 +3498,39 @@ namespace AmigaNet.Legion
                             {
                                 var BR = lupItems[i];
                                 var placed = false;
-                                for (var W = 1; W <= 10; W++)
+                                var TYP = BRON[BR, B_TYP];
+                                if (TYP == 17) // Ammo
                                 {
-                                    if (ARMIA[ARM, W, TE] > 0)
+                                    amos.Add(ref ARMIA[ARM, 0, TAMO], BRON[BR, B_DOSW], ARMIA[ARM, 0, TAMO], 320);
+                                    lupItems.RemoveAt(i);
+                                    varTakenCount++;
+                                    placed = true;
+                                }
+                                else
+                                {
+                                    for (var W = 1; W <= 10; W++)
                                     {
-                                        for (var S = 0; S <= 7; S++)
+                                        if (ARMIA[ARM, W, TE] > 0)
                                         {
-                                            if (ARMIA[ARM, W, TPLECAK + S] == 0)
+                                            for (var S = 0; S <= 7; S++)
                                             {
-                                                ARMIA[ARM, W, TPLECAK + S] = BR;
-                                                WAGA(ARM, W);
-                                                lupItems.RemoveAt(i);
-                                                varTakenCount++;
-                                                placed = true;
-                                                break;
+                                                if (ARMIA[ARM, W, TPLECAK + S] == 0)
+                                                {
+                                                    ARMIA[ARM, W, TPLECAK + S] = BR;
+                                                    WAGA(ARM, W);
+                                                    lupItems.RemoveAt(i);
+                                                    varTakenCount++;
+                                                    placed = true;
+                                                    break;
+                                                }
                                             }
                                         }
+                                        if (placed) break;
                                     }
-                                    if (placed) break;
                                 }
                                 if (!placed) { varNoSpace = true; i++; }
                             }
+                            while (screens.MouseClick() != 0) { screens.WaitVbl(); }
                             break; // Redraw
                         }
                     }
@@ -3513,7 +3538,7 @@ namespace AmigaNet.Legion
                     var click = screens.MouseClick();
                     if (click == 1)
                     {
-                        var STREFA = screens.MouseZone();
+                        var STREFA = GetLootMouseZone();
                         var CTRL = screens.IsKeyDown(KeyLeftControl) || screens.IsKeyDown(KeyRightControl);
 
                         // Up arrow - next alive warrior
@@ -3521,6 +3546,7 @@ namespace AmigaNet.Legion
                         {
                             var OLD_NR = NR;
                             do { amos.Add(ref NR, 1, 1, 10); } while (ARMIA[ARM, NR, TE] <= 0 && NR != OLD_NR);
+                            while (screens.MouseClick() != 0) { screens.WaitVbl(); }
                             break;
                         }
 
@@ -3529,6 +3555,7 @@ namespace AmigaNet.Legion
                         {
                             var OLD_NR = NR;
                             do { amos.Add(ref NR, -1, 1, 10); } while (ARMIA[ARM, NR, TE] <= 0 && NR != OLD_NR);
+                            while (screens.MouseClick() != 0) { screens.WaitVbl(); }
                             break;
                         }
 
@@ -3536,6 +3563,7 @@ namespace AmigaNet.Legion
                         if (STREFA == 3)
                         {
                             KONIEC = true;
+                            while (screens.MouseClick() != 0) { screens.WaitVbl(); }
                             break;
                         }
 
@@ -3547,27 +3575,39 @@ namespace AmigaNet.Legion
                             {
                                 var BR = lupItems[i];
                                 var placed = false;
-                                for (var W = 1; W <= 10; W++)
+                                var TYP = BRON[BR, B_TYP];
+                                if (TYP == 17) // Ammo
                                 {
-                                    if (ARMIA[ARM, W, TE] > 0)
+                                    amos.Add(ref ARMIA[ARM, 0, TAMO], BRON[BR, B_DOSW], ARMIA[ARM, 0, TAMO], 320);
+                                    lupItems.RemoveAt(i);
+                                    varTakenCount++;
+                                    placed = true;
+                                }
+                                else
+                                {
+                                    for (var W = 1; W <= 10; W++)
                                     {
-                                        for (var S = 0; S <= 7; S++)
+                                        if (ARMIA[ARM, W, TE] > 0)
                                         {
-                                            if (ARMIA[ARM, W, TPLECAK + S] == 0)
+                                            for (var S = 0; S <= 7; S++)
                                             {
-                                                ARMIA[ARM, W, TPLECAK + S] = BR;
-                                                WAGA(ARM, W);
-                                                lupItems.RemoveAt(i);
-                                                varTakenCount++;
-                                                placed = true;
-                                                break;
+                                                if (ARMIA[ARM, W, TPLECAK + S] == 0)
+                                                {
+                                                    ARMIA[ARM, W, TPLECAK + S] = BR;
+                                                    WAGA(ARM, W);
+                                                    lupItems.RemoveAt(i);
+                                                    varTakenCount++;
+                                                    placed = true;
+                                                    break;
+                                                }
                                             }
                                         }
+                                        if (placed) break;
                                     }
-                                    if (placed) break;
                                 }
                                 if (!placed) { varNoSpace = true; i++; }
                             }
+                            while (screens.MouseClick() != 0) { screens.WaitVbl(); }
                             break;
                         }
 
@@ -3575,6 +3615,7 @@ namespace AmigaNet.Legion
                         if (STREFA == 5)
                         {
                             page--;
+                            while (screens.MouseClick() != 0) { screens.WaitVbl(); }
                             break;
                         }
 
@@ -3582,6 +3623,7 @@ namespace AmigaNet.Legion
                         if (STREFA == 6)
                         {
                             page++;
+                            while (screens.MouseClick() != 0) { screens.WaitVbl(); }
                             break;
                         }
 
@@ -3596,23 +3638,35 @@ namespace AmigaNet.Legion
                                 {
                                     // Ctrl+click: take directly to backpack
                                     var placed = false;
-                                    for (var S = 0; S <= 7; S++)
+                                    var TYP = BRON[BR, B_TYP];
+                                    if (TYP == 17) // Ammo
                                     {
-                                        if (ARMIA[ARM, NR, TPLECAK + S] == 0)
+                                        amos.Add(ref ARMIA[ARM, 0, TAMO], BRON[BR, B_DOSW], ARMIA[ARM, 0, TAMO], 320);
+                                        lupItems.RemoveAt(pageStart + idx);
+                                        varTakenCount++;
+                                        placed = true;
+                                    }
+                                    else
+                                    {
+                                        for (var S = 0; S <= 7; S++)
                                         {
-                                            ARMIA[ARM, NR, TPLECAK + S] = BR;
-                                            WAGA(ARM, NR);
-                                            lupItems.RemoveAt(pageStart + idx);
-                                            varTakenCount++;
-                                            placed = true;
-                                            break;
+                                            if (ARMIA[ARM, NR, TPLECAK + S] == 0)
+                                            {
+                                                ARMIA[ARM, NR, TPLECAK + S] = BR;
+                                                WAGA(ARM, NR);
+                                                lupItems.RemoveAt(pageStart + idx);
+                                                varTakenCount++;
+                                                placed = true;
+                                                break;
+                                            }
                                         }
                                     }
                                     if (!placed) varNoSpace = true;
+                                    while (screens.MouseClick() != 0) { screens.WaitVbl(); }
                                     break;
                                 }
 
-                                // Normal click: show item stats in panel
+                                // Normal click: show item stats in panel & enter drag mode
                                 var BRO1_S = BRON2_S[BRON[BR, B_TYP]];
                                 var BRO2_S = BRON_S[BR];
                                 screens.Screen(2);
@@ -3639,33 +3693,61 @@ namespace AmigaNet.Legion
                                 screens.HotSpot(BB, 11);
                                 screens.Sprite(53, screens.XMouse(), screens.YMouse(), BB);
 
+                                // Wait for initial click release before listening for drop
+                                while (screens.MouseClick() != 0)
+                                {
+                                    screens.Sprite(53, screens.XMouse(), screens.YMouse());
+                                    screens.WaitVbl();
+                                }
+
                                 var DRAG_DONE = false;
                                 while (!DRAG_DONE)
                                 {
                                     screens.Sprite(53, screens.XMouse(), screens.YMouse());
                                     screens.WaitVbl();
-                                    if (screens.MouseClick() == 1)
+
+                                    var dragClick = screens.MouseClick();
+                                    if (dragClick == 1) // Left click to drop
                                     {
                                         screens.SpriteOff(53);
                                         screens.WaitVbl();
                                         screens.HotSpot(BB, 0);
 
                                         screens.Screen(1);
-                                        var XM = screens.XScreen(screens.XMouse());
-                                        var YM = screens.YScreen(screens.YMouse());
-                                        var J = screens.Zone(XM, YM);
+                                        var targetZone = screens.MouseZone();
 
-                                        if (J >= 40 && J < 48)
+                                        if (targetZone >= 40 && targetZone < 48)
                                         {
-                                            var J2 = J - 40;
-                                            if (ARMIA[ARM, NR, TPLECAK + J2] == 0)
+                                            var J2 = targetZone - 40;
+                                            var TYP = BRON[BR, B_TYP];
+                                            if (TYP == 17) // Ammo
+                                            {
+                                                amos.Add(ref ARMIA[ARM, 0, TAMO], BRON[BR, B_DOSW], ARMIA[ARM, 0, TAMO], 320);
+                                                lupItems.RemoveAt(pageStart + idx);
+                                                varTakenCount++;
+                                            }
+                                            else if (ARMIA[ARM, NR, TPLECAK + J2] == 0) // Empty slot
                                             {
                                                 ARMIA[ARM, NR, TPLECAK + J2] = BR;
                                                 WAGA(ARM, NR);
                                                 lupItems.RemoveAt(pageStart + idx);
                                                 varTakenCount++;
                                             }
+                                            else
+                                            {
+                                                varNoSpace = true;
+                                            }
                                         }
+
+                                        while (screens.MouseClick() != 0) { screens.WaitVbl(); }
+                                        DRAG_DONE = true;
+                                    }
+                                    else if (dragClick == 2) // Right click to cancel drag
+                                    {
+                                        screens.SpriteOff(53);
+                                        screens.WaitVbl();
+                                        screens.HotSpot(BB, 0);
+                                        while (screens.MouseClick() != 0) { screens.WaitVbl(); }
                                         DRAG_DONE = true;
                                     }
                                 }
@@ -3685,6 +3767,7 @@ namespace AmigaNet.Legion
                                     // Ctrl+Click: auto-equip
                                     SKLEP_AUTO_EQUIP(BR, J2, ARM, NR);
                                     statusMsg = TR("BATTLE_EQUIPPED");
+                                    while (screens.MouseClick() != 0) { screens.WaitVbl(); }
                                     break;
                                 }
 
@@ -3701,25 +3784,24 @@ namespace AmigaNet.Legion
                                 OUTLINE(160, 152, TR("BATTLE_ITEM_WGT", BRON[BR, B_WAGA]), 30, 0);
                                 OUTLINE(160, 163, TR("BATTLE_ITEM_PRICE", BRON[BR, B_CENA]), 30, 0);
                                 screens.View();
+                                while (screens.MouseClick() != 0) { screens.WaitVbl(); }
                             }
                         }
                     }
 
-                    // Right-click: discard grid item, or exit if elsewhere
+                    // Right-click: discard grid item if clicked on grid, otherwise DO NOT EXIT (exit only on ESC / Enter / "Dalej")
                     if (click == 2)
                     {
-                        var STREFA = screens.MouseZone();
+                        var STREFA = GetLootMouseZone();
                         if (STREFA >= 10 && STREFA < 10 + gridCount)
                         {
                             var idx = STREFA - 10;
                             lupItems.RemoveAt(pageStart + idx);
                             statusMsg = TR("BATTLE_DISCARDED");
+                            while (screens.MouseClick() != 0) { screens.WaitVbl(); }
+                            break;
                         }
-                        else
-                        {
-                            KONIEC = true;
-                        }
-                        break;
+                        while (screens.MouseClick() != 0) { screens.WaitVbl(); }
                     }
                 }
             }
