@@ -172,7 +172,7 @@ The hotspot is set to value **11** (centered, middle-bottom of a 16x16 icon) so 
 | Ctrl+Left-click on item | Inventory backpack | Auto-equip to best matching equipment slot |
 | Ctrl+Left-click on item | Inventory ground | Move to first empty backpack slot |
 | Ctrl+Left-click on item | Shop shelf | Buy directly to first empty backpack slot (no drag) |
-| Ctrl+Left-click on item | Shop backpack | Auto-equip (data only) |
+| Ctrl+Left-click on item | Shop backpack | Sell directly to first empty shop shelf slot (no drag) |
 | `q` key | Shop | Exit shop |
 
 ---

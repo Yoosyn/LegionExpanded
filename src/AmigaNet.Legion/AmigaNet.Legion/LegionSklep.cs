@@ -1,4 +1,4 @@
-﻿using AmigaNet.Amos.Screens;
+using AmigaNet.Amos.Screens;
 
 namespace AmigaNet.Legion
 {
@@ -218,22 +218,52 @@ namespace AmigaNet.Legion
                         var BRO = ARMIA[A, NR, TPLECAK + I2];
                         if (BRO > 0)
                         {
+                            var B1 = BRON[BRO, B_BOB];
+                            var BRO1_S = BRON2_S[BRON[BRO, B_TYP]];
+                            var BRO2_S = BRON_S[BRO];
+                            var TYPB = BRON[BRO, B_TYP];
+                            var CENA = BRON[BRO, B_CENA] + ((BRON[BRO, B_CENA] * MIASTA[MIASTO, TYPB, M_MUR]) / 100);
+                            CENA = CENA - ((CENA * 10) / 100);
+
                             if (CTRL)
                             {
-                                // Ctrl+Click: auto-equip from backpack
-                                SKLEP_AUTO_EQUIP(BRO, I2, A, NR);
-                                SKLEP_PLECAK(A, NR);
+                                // Ctrl+Click: sell directly to the shop
+                                var shelfSlot = -1;
+                                for (var s = 0; s < 20; s++)
+                                {
+                                    if (SKLEP[SNR, s] == 0)
+                                    {
+                                        shelfSlot = s;
+                                        break;
+                                    }
+                                }
+
+                                if (shelfSlot != -1)
+                                {
+                                    SKLEP[SNR, shelfSlot] = BRO;
+                                    ARMIA[A, NR, TPLECAK + I2] = 0;
+                                    GRACZE[1, 1] += CENA;
+
+                                    var BB = BRON[BRO, B_BOB] + BROBY;
+                                    var X = (shelfSlot < 10) ? 8 + shelfSlot * 20 : 8 + (shelfSlot - 10) * 20;
+                                    var Y = (shelfSlot < 10) ? 4 : 24;
+                                    screens.PasteBob(X, Y, BB);
+
+                                    SKLEP_SZMAL();
+                                    SKLEP_PLECAK(A, NR);
+                                    A_S = BRO1_S + " " + BRO2_S;
+                                    SKLEP_NAPISZ(A_S, "Sprzedano za :" + CENA);
+                                }
+                                else
+                                {
+                                    A_S = BRO1_S + " " + BRO2_S;
+                                    SKLEP_NAPISZ(A_S, "Brak miejsca w sklepie");
+                                }
                             }
                             else
                             {
-                                var B1 = BRON[BRO, B_BOB];
-                                var BRO1_S = BRON2_S[BRON[BRO, B_TYP]];
-                                var BRO2_S = BRON_S[BRO];
-                                A_S = BRO1_S + " " + BRO2_S;
-                                var TYPB = BRON[BRO, B_TYP];
-                                var CENA = BRON[BRO, B_CENA] + ((BRON[BRO, B_CENA] * MIASTA[MIASTO, TYPB, M_MUR]) / 100);
-                                CENA = CENA - ((CENA * 10) / 100);
                                 var ZNAK = 1;
+                                A_S = BRO1_S + " " + BRO2_S;
                                 var B_S = "Zapłacę " + CENA;
                                 SKLEP_NAPISZ(A_S, B_S);
                                 ARMIA[A, NR, TPLECAK + I2] = 0;
