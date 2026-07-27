@@ -1,4 +1,4 @@
-﻿namespace AmigaNet.Legion
+namespace AmigaNet.Legion
 {
     public partial class Legion
     {
@@ -511,7 +511,7 @@
                 {
                     Z_S = ROB_IMIE();
                 }
-                if (Z_S == "�")
+                if (Z_S == "§")
                 {
                     Z_S = MIASTA_S[PRZYGODY[P, P_X]];
                 }
@@ -528,7 +528,7 @@
                     var BRO = PRZYGODY[P, P_BRON];
                     Z_S = BRON2_S[BRON[BRO, B_TYP]] + " " + BRON_S[BRO];
                 }
-                if (Z_S == "�")
+                if (Z_S == "°")
                 {
                     Z_S = RASY_S[PRZYGODY[P, P_BRON]];
                 }
