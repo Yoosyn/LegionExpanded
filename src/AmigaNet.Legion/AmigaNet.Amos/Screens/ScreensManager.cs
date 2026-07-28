@@ -1,4 +1,4 @@
-﻿using AmigaNet.Amos.MemoryBanks;
+using AmigaNet.Amos.MemoryBanks;
 using AmigaNet.Amos.Screens.Amal;
 using AmigaNet.IO.Fonts;
 using AmigaNet.IO.Graphics.Iff;
@@ -154,6 +154,7 @@ namespace AmigaNet.Amos.Screens
         public void ScreenDisplay(int number, int x, int y, int width, int height)
         {
             var screen = GetScreen(number);
+            if (screen == null) return;
             if (x >= 0) screen.X = x;
             if (y >= 0) screen.Y = y;
             if (width >= 0) screen.DisplayWidth = width;
@@ -170,6 +171,7 @@ namespace AmigaNet.Amos.Screens
         public void ScreenOffset(int number, int x, int y)
         {
             var screen = GetScreen(number);
+            if (screen == null) return;
             screen.OffsetX = x;
             screen.OffsetY = y;
             UpdateDisplay();
@@ -222,6 +224,7 @@ namespace AmigaNet.Amos.Screens
         public void ScreenHide(int number = -1)
         {
             var screen = GetScreen(number);
+            if (screen == null) return;
             screen.IsVisible = false;
             UpdateDisplay();
         }
@@ -233,6 +236,7 @@ namespace AmigaNet.Amos.Screens
         public void ScreenShow(int number = -1)
         {
             var screen = GetScreen(number);
+            if (screen == null) return;
             screen.IsVisible = true;
             UpdateDisplay();
         }
@@ -244,7 +248,8 @@ namespace AmigaNet.Amos.Screens
         public void ScreenToFront(int number = -1)
         {
             var screen = GetScreen(number);
-            if (screen != null) screens.Remove(screen);
+            if (screen == null) return;
+            screens.Remove(screen);
             screens.Add(screen);
             currentScreen = screen.Number;
             UpdateDisplay();
@@ -257,7 +262,8 @@ namespace AmigaNet.Amos.Screens
         public void ScreenToBack(int number = -1)
         {
             var screen = GetScreen(number);
-            if (screen != null) screens.Remove(screen);
+            if (screen == null) return;
+            screens.Remove(screen);
             screens.Insert(0, screen);
             UpdateDisplay();
         }
@@ -369,9 +375,13 @@ namespace AmigaNet.Amos.Screens
                 {
                     var pixelX = sx + x1;
                     var pixelY = sy + y1;
-                    var pixel = screen.Data[pixelX + screen.Width * pixelY];
-                    if (pixel.R == 0 && pixel.G == 0 && pixel.B == 0) continue;
-                    imageData.Pixels[sx + width * sy] = pixel;
+                    if (pixelX >= 0 && pixelX < screen.Width &&
+                        pixelY >= 0 && pixelY < screen.Height)
+                    {
+                        var pixel = screen.Data[pixelX + screen.Width * pixelY];
+                        if (pixel.R == 0 && pixel.G == 0 && pixel.B == 0) continue;
+                        imageData.Pixels[sx + width * sy] = pixel;
+                    }
                 }
             }
 
@@ -387,6 +397,27 @@ namespace AmigaNet.Amos.Screens
         {
             var imageData = banks.Bank1.Data[imageNumber - 1];
             PutDataIntoScreen(imageData, x, y);
+        }
+
+        /// <summary>
+        /// Returns the current number of bobs loaded in Bank1.
+        /// </summary>
+        public int GetBobCount()
+        {
+            return banks.Bank1.Data.Count;
+        }
+
+        /// <summary>
+        /// Trims Bank1 to the specified count, removing any bobs beyond that index.
+        /// Used to restore bank state after temporary bob loads.
+        /// </summary>
+        public void TrimBobs(int count)
+        {
+            var data = banks.Bank1.Data;
+            if (data.Count > count)
+            {
+                data.RemoveRange(count, data.Count - count);
+            }
         }
 
         /// <summary>
@@ -531,6 +562,11 @@ namespace AmigaNet.Amos.Screens
         {
             var screen = GetCurrentScreen();
 
+            if (x < 0 || x >= screen.Width || y < 0 || y >= screen.Height)
+            {
+                return -1;
+            }
+
             var pixel = screen.Data[x + y * screen.Width];
 
             for(var i = 0; i < screen.Palette.Length; i++)
@@ -571,6 +607,7 @@ namespace AmigaNet.Amos.Screens
         public void ReserveZone(int number = -1)
         {
             var screen = GetCurrentScreen();
+            if (screen == null) return;
             if (number == -1)
             {
                 screen.Zones = null!;
@@ -588,8 +625,10 @@ namespace AmigaNet.Amos.Screens
         public void ResetZone(int number = -1)
         {
             var screen = GetCurrentScreen();
+            if (screen == null) return;
             if (number == -1)
             {
+                if (screen.Zones == null) return;
                 for (var i = 0; i < screen.Zones.Length; i++)
                 {
                     screen.Zones[i] = null!;
@@ -598,6 +637,7 @@ namespace AmigaNet.Amos.Screens
             }
             else
             {
+                if (screen.Zones == null) return;
                 var zone = screen.Zones.FirstOrDefault(z => z?.Number == number);
                 if (zone == null)
                 {
@@ -619,6 +659,17 @@ namespace AmigaNet.Amos.Screens
         public void SetZone(int number, int x1, int y1, int x2, int y2)
         {
             var screen = GetCurrentScreen();
+            if (screen == null) return;
+            if (screen.Zones == null)
+            {
+                screen.Zones = new Zone[Math.Max(256, number + 1)];
+            }
+            else if (number >= screen.Zones.Length)
+            {
+                var newZones = screen.Zones;
+                Array.Resize(ref newZones, number + 1);
+                screen.Zones = newZones;
+            }
             screen.Zones[number] = new Zone { Number = number, X1 = x1, Y1 = y1, X2 = x2, Y2 = y2 };
             if (number >= 21) screen.ZoneEpoch++;
         }
@@ -630,6 +681,7 @@ namespace AmigaNet.Amos.Screens
         public int Zone(int x, int y)
         {
             var screen = GetCurrentScreen();
+            if (screen?.Zones == null) return 0;
             foreach (var zone in screen.Zones)
             {
                 if (zone == null) continue;
@@ -733,11 +785,15 @@ namespace AmigaNet.Amos.Screens
                 {
                     var pixelX = sx + x;
                     var pixelY = sy + y;
-                    var pixel = screen.Data[pixelX + screen.Width * pixelY];
-                    //screen.Pixels[pixelX + screen.Width * pixelY] = Pixel.Black;
-                    if (!(mask == 1 && pixel.Index == 0))
+                    if (pixelX >= 0 && pixelX < screen.Width &&
+                        pixelY >= 0 && pixelY < screen.Height)
                     {
-                        block.Data.Pixels[sx + width * sy] = pixel;
+                        var pixel = screen.Data[pixelX + screen.Width * pixelY];
+                        //screen.Pixels[pixelX + screen.Width * pixelY] = Pixel.Black;
+                        if (!(mask == 1 && pixel.Index == 0))
+                        {
+                            block.Data.Pixels[sx + width * sy] = pixel;
+                        }
                     }
                 }
             }
@@ -767,7 +823,11 @@ namespace AmigaNet.Amos.Screens
                 {
                     var pixelX = sx + x;
                     var pixelY = sy + y;
-                    screen.Data[pixelX + screen.Width * pixelY] = block.Data.Pixels[sx + block.Data.Width * sy];
+                    if (pixelX >= 0 && pixelX < screen.Width &&
+                        pixelY >= 0 && pixelY < screen.Height)
+                    {
+                        screen.Data[pixelX + screen.Width * pixelY] = block.Data.Pixels[sx + block.Data.Width * sy];
+                    }
                 }
             }
 
@@ -968,8 +1028,7 @@ namespace AmigaNet.Amos.Screens
                 pixel = penColor;
             }
 
-            var idx = x + screen.Width * y;
-            if (idx < screen.Data.Length)
+            if (x >= 0 && x < screen.Width && y >= 0 && y < screen.Height)
             {
                 screen.Data[x + screen.Width * y] = pixel;
             }
@@ -1401,14 +1460,18 @@ namespace AmigaNet.Amos.Screens
                 {
                     var screenPosX = x + bx - imageData.HotspotX;
                     var screenPosY = y + by - imageData.HotspotY;
-                    var pixel = imageData.Pixels[bx + imageData.Width * by];
-                    //if (pixel.A == filterPixel.A &&
-                    if (pixel.Index == filterPixel.Index &&
-                        pixel.R == filterPixel.R &&
-                        pixel.G == filterPixel.G &&
-                        pixel.B == filterPixel.B)
+                    if (screenPosX >= 0 && screenPosX < screen.Width &&
+                        screenPosY >= 0 && screenPosY < screen.Height)
                     {
-                        screen.Data[screenPosX + screen.Width * screenPosY] = replacePixel;
+                        var pixel = imageData.Pixels[bx + imageData.Width * by];
+                        //if (pixel.A == filterPixel.A &&
+                        if (pixel.Index == filterPixel.Index &&
+                            pixel.R == filterPixel.R &&
+                            pixel.G == filterPixel.G &&
+                            pixel.B == filterPixel.B)
+                        {
+                            screen.Data[screenPosX + screen.Width * screenPosY] = replacePixel;
+                        }
                     }
                 }
             }

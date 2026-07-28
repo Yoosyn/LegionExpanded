@@ -41,7 +41,16 @@ namespace AmigaNet.Legion.Pathfinding
             var cellPath = RunAStar(grid, isPlayerArmy, startCellX, startCellY, goalCellX, goalCellY);
             if (cellPath == null) return null!;
 
-            var waypoints = FunnelSimplify(grid, isPlayerArmy, cellPath, goalX, goalY);
+            var actualGoalX = goalX;
+            var actualGoalY = goalY;
+            var (actualGoalCellX, actualGoalCellY) = grid.ToCell(actualGoalX, actualGoalY);
+            if (actualGoalCellX != goalCellX || actualGoalCellY != goalCellY)
+            {
+                actualGoalX = (goalCellX * NavGrid.CellSize) + (NavGrid.CellSize / 2);
+                actualGoalY = (goalCellY * NavGrid.CellSize) + (NavGrid.CellSize / 2);
+            }
+
+            var waypoints = FunnelSimplify(grid, isPlayerArmy, cellPath, actualGoalX, actualGoalY);
             return waypoints;
         }
 

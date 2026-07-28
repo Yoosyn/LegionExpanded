@@ -1,4 +1,4 @@
-﻿using AmigaNet.Amos.Screens;
+using AmigaNet.Amos.Screens;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -209,29 +209,7 @@ namespace AmigaNet.Legion
                                 {
                                     ZOKNO();
                                     screens.SpriteOff(2);
-                                    _LOAD("dane/gad", 1);
-                                    screens.ScreenOpen(1, 320, 160, 32, PixelMode.Lowres);
-                                    screens.Screen(1);
-                                    //Curs Off : Flash Off 
-                                    screens.ReserveZone(60);
-                                    screens.GetBobPalette();
-                                    screens.SetFont(FON1);
-                                    GOBY = 44;
-                                    ARM = A;
-                                    for (var I = 1; I <= 10; I++)
-                                    {
-                                        if (ARMIA[A, I, TE] > 0)
-                                        {
-                                            NUMER = I;
-                                            I = 10;
-                                        }
-                                    }
-                                    WYBOR(1);
-                                    screens.ScreenClose(1);
-                                    for (var I = 1; I <= 50; I++)
-                                    {
-                                        screens.DelBob(GOBY + 1);
-                                    }
+                                    INVENTORY_NEW(A);
                                     screens.Screen(0);
                                     screens.Sprite(2, SPX, SPY, 1);
                                     ARMIA_RYSUJ_ROZKAZY(A, TEREN);

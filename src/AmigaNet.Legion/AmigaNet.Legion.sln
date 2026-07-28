@@ -15,6 +15,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AmigaNet.Legion.DesktopApp"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SharpMod.Core", "SharpMod.Core\SharpMod.Core.csproj", "{AB49473C-9FB8-477D-86CD-F2E7792C6BD1}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AmigaNet.Legion.Tests", "AmigaNet.Legion.Tests\AmigaNet.Legion.Tests.csproj", "{9601A2C2-EDAF-4651-B657-22C80EE0EDCD}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -45,6 +47,10 @@ Global
 		{AB49473C-9FB8-477D-86CD-F2E7792C6BD1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{AB49473C-9FB8-477D-86CD-F2E7792C6BD1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{AB49473C-9FB8-477D-86CD-F2E7792C6BD1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9601A2C2-EDAF-4651-B657-22C80EE0EDCD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9601A2C2-EDAF-4651-B657-22C80EE0EDCD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9601A2C2-EDAF-4651-B657-22C80EE0EDCD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9601A2C2-EDAF-4651-B657-22C80EE0EDCD}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
