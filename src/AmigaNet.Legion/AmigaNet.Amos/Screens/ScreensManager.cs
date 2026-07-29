@@ -379,6 +379,7 @@ namespace AmigaNet.Amos.Screens
                         pixelY >= 0 && pixelY < screen.Height)
                     {
                         var pixel = screen.Data[pixelX + screen.Width * pixelY];
+                        if (pixel == null) continue;
                         if (pixel.R == 0 && pixel.G == 0 && pixel.B == 0) continue;
                         imageData.Pixels[sx + width * sy] = pixel;
                     }
@@ -568,6 +569,7 @@ namespace AmigaNet.Amos.Screens
             }
 
             var pixel = screen.Data[x + y * screen.Width];
+            if (pixel == null) return -1;
 
             for(var i = 0; i < screen.Palette.Length; i++)
             {
@@ -789,6 +791,7 @@ namespace AmigaNet.Amos.Screens
                         pixelY >= 0 && pixelY < screen.Height)
                     {
                         var pixel = screen.Data[pixelX + screen.Width * pixelY];
+                        if (pixel == null) continue;
                         //screen.Pixels[pixelX + screen.Width * pixelY] = Pixel.Black;
                         if (!(mask == 1 && pixel.Index == 0))
                         {
@@ -826,7 +829,9 @@ namespace AmigaNet.Amos.Screens
                     if (pixelX >= 0 && pixelX < screen.Width &&
                         pixelY >= 0 && pixelY < screen.Height)
                     {
-                        screen.Data[pixelX + screen.Width * pixelY] = block.Data.Pixels[sx + block.Data.Width * sy];
+                        var pixel = block.Data.Pixels[sx + block.Data.Width * sy];
+                        if (pixel == null) continue;
+                        screen.Data[pixelX + screen.Width * pixelY] = pixel;
                     }
                 }
             }
@@ -1030,6 +1035,7 @@ namespace AmigaNet.Amos.Screens
 
             if (x >= 0 && x < screen.Width && y >= 0 && y < screen.Height)
             {
+                if (pixel == null) return;
                 screen.Data[x + screen.Width * y] = pixel;
             }
         }
@@ -1390,6 +1396,7 @@ namespace AmigaNet.Amos.Screens
         private void PutPixel(IGraphicElement element, Pixel pixel, int x, int y)
         {
             if (x < 0 || y < 0 || x >= element.Width || y >= element.Height) return;
+            if (element.Data == null) return;
             element.Data[x + element.Width * y] = pixel;
         }
 
@@ -1404,6 +1411,7 @@ namespace AmigaNet.Amos.Screens
             }
             else
             {
+                if (element.Data == null) return;
                 for (var bx = 0; bx < element.Width; bx++)
                 {
                     for (var by = 0; by < element.Height; by++)
@@ -1464,6 +1472,7 @@ namespace AmigaNet.Amos.Screens
                         screenPosY >= 0 && screenPosY < screen.Height)
                     {
                         var pixel = imageData.Pixels[bx + imageData.Width * by];
+                        if (pixel == null) continue;
                         //if (pixel.A == filterPixel.A &&
                         if (pixel.Index == filterPixel.Index &&
                             pixel.R == filterPixel.R &&
@@ -1495,12 +1504,14 @@ namespace AmigaNet.Amos.Screens
 
         private Screen GetDefaultScreen()
         {
+            var data = new Pixel[320 * 200];
+            Array.Fill(data, Pixel.Black);
             return new Screen
             {
                 Number = 0,
                 Width = Amos.Screens.Screen.DEFAULT_WIDTH,
                 Height = Amos.Screens.Screen.DEFAULT_HEIGHT,
-                Data = new Pixel[320 * 200],
+                Data = data,
                 Colors = 16,
                 PixelMode = PixelMode.Lowres,
                 X = Amos.Screens.Screen.DEFAULT_X,

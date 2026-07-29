@@ -24,6 +24,7 @@
         public ImageData(String name, Int32 width, Int32 height, Int32 hotspotX = 0, Int32 hotspotY = 0)
             : this(name, new Pixel[width * height], width, height, hotspotX, hotspotY)
         {
+            Array.Fill(pixels, Pixel.Black);
         }
 
         public String Name => name;

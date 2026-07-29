@@ -11,7 +11,7 @@ namespace AmigaNet.Amos.Screens
 
         public Screen() { }
 
-        public Pixel[] Data { get; internal set; }
+        public Pixel[] Data { get; internal set; } = Array.Empty<Pixel>();
 
         public IGraphicElement CurrentShape { get; internal set; }
 
