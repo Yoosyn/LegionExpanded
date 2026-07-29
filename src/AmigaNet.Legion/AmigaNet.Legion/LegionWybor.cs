@@ -569,7 +569,17 @@
                         var BR1 = ARMIA[ARM, NUMER, TGLOWA + (I - 13)];
                         var PLACE = BRON[BR, B_PLACE];
                         var TYP = BRON[BR, B_TYP];
-                        if (PLACE == I - 12 && BR1 == 0)
+                        // Head slot (I==13): allow potion/herb even if occupied (auto-unequip)
+                        if (I == 13 && (TYP == 13 || TYP == 18) && PLACE == 1)
+                        {
+                            if (BR1 != 0) { PRZELICZ(0, -1); ARMIA[ARM, NUMER, TGLOWA] = 0; }
+                            ARMIA[ARM, NUMER, TGLOWA] = BR;
+                            PRZELICZ(0, 1);
+                            ARMIA[ARM, NUMER, TGLOWA] = 0;
+                            if (BR1 != 0) { ARMIA[ARM, NUMER, TGLOWA] = BR1; PRZELICZ(0, 1); }
+                            KONIEC = true;
+                        }
+                        else if (PLACE == I - 12 && BR1 == 0)
                         {
                             ARMIA[ARM, NUMER, TGLOWA + (I - 13)] = BR;
                             PRZELICZ(I - 13, 1);
@@ -774,6 +784,18 @@
                 {
                     ARMIA[ARM, NUMER, TE] = 1;
                 }
+                if (ARMIA[ARM, NUMER, TP] < 0)
+                {
+                    ARMIA[ARM, NUMER, TP] = 0;
+                }
+                if (ARMIA[ARM, NUMER, TSI] < 1)
+                {
+                    ARMIA[ARM, NUMER, TSI] = 1;
+                }
+                if (ARMIA[ARM, NUMER, TSZ] < 1)
+                {
+                    ARMIA[ARM, NUMER, TSZ] = 1;
+                }
 
                 // Re-apply equipment bonuses that were temporarily removed.
                 if ((TYP == 13 || TYP == 18) && ZNAK == 1)
@@ -851,18 +873,22 @@
 
             if (PLACE == 1) // Head
             {
-                if (ARMIA[ARM, NUMER, TGLOWA] == 0)
+                // Potion/herb: auto-unequip, apply, re-equip
+                if (TYP == 13 || TYP == 18)
+                {
+                    int old = ARMIA[ARM, NUMER, TGLOWA];
+                    if (old != 0) { PRZELICZ(0, -1); ARMIA[ARM, NUMER, TGLOWA] = 0; }
+                    ARMIA[ARM, NUMER, TGLOWA] = BR;
+                    PRZELICZ(0, 1);
+                    ARMIA[ARM, NUMER, TGLOWA] = 0;
+                    if (old != 0) { ARMIA[ARM, NUMER, TGLOWA] = old; PRZELICZ(0, 1); }
+                    equipped = true;
+                }
+                else if (ARMIA[ARM, NUMER, TGLOWA] == 0)
                 {
                     ARMIA[ARM, NUMER, TGLOWA] = BR;
                     PRZELICZ(0, 1);
-                    if (TYP != 13 && TYP != 18)
-                    {
-                        screens.PasteBob(49, 10, BRON[BR, B_BOB] + BROBY + GOBY);
-                    }
-                    else
-                    {
-                        ARMIA[ARM, NUMER, TGLOWA] = 0;
-                    }
+                    screens.PasteBob(49, 10, BRON[BR, B_BOB] + BROBY + GOBY);
                     equipped = true;
                 }
             }

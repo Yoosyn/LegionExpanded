@@ -463,14 +463,54 @@ namespace AmigaNet.Legion
 
                     int dropZone = screens.Zone(xm, ym);
 
-                    // Equipment slots: must be empty (same as original WYBOR)
+                    // Equipment slots
                     if (dropZone >= 11 && dropZone <= 15)
                     {
                         int targetSlot = INVENTORY_NEW_ZONE_TO_SLOT(dropZone);
                         if (targetSlot > 0)
                         {
                             int oldItem = ARMIA[arm, unit, targetSlot];
-                            if (oldItem == 0)
+
+                            // Potion/herb: allow drop even if slot is occupied
+                            if (typ == 13 || typ == 18)
+                            {
+                                bool valid = false;
+                                if (targetSlot == TGLOWA && place == 1) valid = true;
+                                else if (targetSlot == TKORP && place == 2) valid = true;
+                                else if (targetSlot == TNOGI && place == 3) valid = true;
+                                else if (targetSlot == TPRAWA && (place == 4 || place == 6)) valid = true;
+                                else if (targetSlot == TLEWA && (place == 4 || (place == 6 && ARMIA[arm, unit, TPRAWA] == 0))) valid = true;
+
+                                if (valid)
+                                {
+                                    // Temporarily remove old item
+                                    if (oldItem != 0)
+                                    {
+                                        PRZELICZ(targetSlot - TGLOWA, -1);
+                                        ARMIA[arm, unit, targetSlot] = 0;
+                                    }
+
+                                    // Apply potion/herb effects
+                                    ARMIA[arm, unit, targetSlot] = item;
+                                    PRZELICZ(targetSlot - TGLOWA, 1);
+                                    ARMIA[arm, unit, targetSlot] = 0;  // consumed
+
+                                    // Put back old item
+                                    if (oldItem != 0)
+                                    {
+                                        ARMIA[arm, unit, targetSlot] = oldItem;
+                                        PRZELICZ(targetSlot - TGLOWA, 1);
+                                    }
+
+                                    done = true;
+                                }
+                                else
+                                {
+                                    ReturnItemToSource(item, arm, unit, sek, fromSlot, fromGround);
+                                    done = true;
+                                }
+                            }
+                            else if (oldItem == 0)  // Non-potion: must be empty
                             {
                                 bool valid = false;
                                 if (targetSlot == TGLOWA && place == 1) valid = true;
@@ -483,12 +523,6 @@ namespace AmigaNet.Legion
                                 {
                                     ARMIA[arm, unit, targetSlot] = item;
                                     PRZELICZ(targetSlot - TGLOWA, 1);
-
-                                    // Potions/herbs: apply effects then remove from slot
-                                    if (typ == 13 || typ == 18)
-                                    {
-                                        ARMIA[arm, unit, targetSlot] = 0;
-                                    }
                                     done = true;
                                 }
                                 else
@@ -615,6 +649,11 @@ namespace AmigaNet.Legion
             else
             {
                 ARMIA[arm, unit, fromSlot] = item;
+                // Re-apply stat bonuses if returning to an equipment slot
+                if (fromSlot >= TGLOWA && fromSlot <= TPRAWA)
+                {
+                    PRZELICZ(fromSlot - TGLOWA, 1);
+                }
             }
         }
 
@@ -624,7 +663,6 @@ namespace AmigaNet.Legion
         /// </summary>
         private void INVENTORY_NEW_AUTO_EQUIP(int arm, int selectedUnit, int sek)
         {
-            // Ensure NUMER is set for PRZELICZ
             NUMER = selectedUnit;
 
             for (int g = 0; g < 9; g++)
@@ -644,36 +682,51 @@ namespace AmigaNet.Legion
                     continue;
                 }
 
-                // Try to equip directly (potions/herbs also equipped to apply effects)
-                if (place == 1 && ARMIA[arm, selectedUnit, TGLOWA] == 0)
+                // Potion/herb: apply even if slot is occupied (auto-unequip temporarily)
+                if (typ == 13 || typ == 18)
+                {
+                    if (place == 1)
+                    {
+                        int old = ARMIA[arm, selectedUnit, TGLOWA];
+                        if (old != 0) { PRZELICZ(0, -1); ARMIA[arm, selectedUnit, TGLOWA] = 0; }
+                        ARMIA[arm, selectedUnit, TGLOWA] = item;
+                        PRZELICZ(0, 1);
+                        ARMIA[arm, selectedUnit, TGLOWA] = 0;
+                        if (old != 0) { ARMIA[arm, selectedUnit, TGLOWA] = old; PRZELICZ(0, 1); }
+                        taken = true;
+                    }
+                    else if (place == 2)
+                    {
+                        int old = ARMIA[arm, selectedUnit, TKORP];
+                        if (old != 0) { PRZELICZ(1, -1); ARMIA[arm, selectedUnit, TKORP] = 0; }
+                        ARMIA[arm, selectedUnit, TKORP] = item;
+                        PRZELICZ(1, 1);
+                        ARMIA[arm, selectedUnit, TKORP] = 0;
+                        if (old != 0) { ARMIA[arm, selectedUnit, TKORP] = old; PRZELICZ(1, 1); }
+                        taken = true;
+                    }
+                }
+
+                // Normal equipment: requires empty slot
+                if (!taken && place == 1 && ARMIA[arm, selectedUnit, TGLOWA] == 0)
                 {
                     ARMIA[arm, selectedUnit, TGLOWA] = item;
                     PRZELICZ(0, 1);
-                    // Potions/herbs: apply effects then remove from slot
-                    if (typ == 13 || typ == 18)
-                    {
-                        ARMIA[arm, selectedUnit, TGLOWA] = 0;
-                    }
                     taken = true;
                 }
-                else if (place == 2 && ARMIA[arm, selectedUnit, TKORP] == 0)
+                else if (!taken && place == 2 && ARMIA[arm, selectedUnit, TKORP] == 0)
                 {
                     ARMIA[arm, selectedUnit, TKORP] = item;
                     PRZELICZ(1, 1);
-                    // Potions: apply effects then remove from slot
-                    if (typ == 13)
-                    {
-                        ARMIA[arm, selectedUnit, TKORP] = 0;
-                    }
                     taken = true;
                 }
-                else if (place == 3 && ARMIA[arm, selectedUnit, TNOGI] == 0)
+                else if (!taken && place == 3 && ARMIA[arm, selectedUnit, TNOGI] == 0)
                 {
                     ARMIA[arm, selectedUnit, TNOGI] = item;
                     PRZELICZ(2, 1);
                     taken = true;
                 }
-                else if (place == 4) // One-handed
+                else if (!taken && place == 4)
                 {
                     if (ARMIA[arm, selectedUnit, TLEWA] == 0)
                     {
@@ -688,14 +741,13 @@ namespace AmigaNet.Legion
                         taken = true;
                     }
                 }
-                else if (place == 6 && ARMIA[arm, selectedUnit, TLEWA] == 0 && ARMIA[arm, selectedUnit, TPRAWA] == 0)
+                else if (!taken && place == 6 && ARMIA[arm, selectedUnit, TLEWA] == 0 && ARMIA[arm, selectedUnit, TPRAWA] == 0)
                 {
                     ARMIA[arm, selectedUnit, TLEWA] = item;
                     PRZELICZ(3, 1);
                     taken = true;
                 }
 
-                // If can't equip, try backpack
                 if (!taken)
                 {
                     for (int b = 0; b < 8; b++)
