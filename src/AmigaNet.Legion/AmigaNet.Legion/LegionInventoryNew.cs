@@ -183,7 +183,7 @@ namespace AmigaNet.Legion
             int gy = 4;
             GADGET(gx, gy, 105, 180, "", 5, 0, 8, 8, -1);
 
-            screens.Ink(16, 8);
+            screens.Ink(3, 8);
             screens.Text(gx + 6, gy + 10, "ZIEMIA");
 
             // Ground Scroll Controls (Zones 50 & 51)
@@ -249,12 +249,12 @@ namespace AmigaNet.Legion
 
             string activeName = ARMIA_S[arm, selectedUnit];
             if (string.IsNullOrEmpty(activeName)) activeName = "Wojownik " + selectedUnit;
-            screens.Ink(16, 19);
+            screens.Ink(3, 19);
             screens.Text(cx + 6, cy + 10, $"{selectedUnit}. {activeName}");
 
             // Paperdoll Slots (match original WYBOR style: K1=5, K2=5, K3=0, K4=16)
             // Head Slot (Zone 11) - uses bg=19 like original head slot
-            GADGET(cx + 46, cy + 16, 22, 20, "H", 5, 5, 19, 19, 11);
+            GADGET(cx + 46, cy + 16, 22, 20, "", 5, 5, 19, 19, 11);
             int headItem = ARMIA[arm, selectedUnit, TGLOWA];
             if (headItem > 0)
             {
@@ -262,7 +262,7 @@ namespace AmigaNet.Legion
             }
 
             // Chest Slot (Zone 12)
-            GADGET(cx + 46, cy + 38, 22, 20, "C", 5, 5, 0, 16, 12);
+            GADGET(cx + 46, cy + 38, 22, 20, "", 5, 5, 0, 16, 12);
             int chestItem = ARMIA[arm, selectedUnit, TKORP];
             if (chestItem > 0)
             {
@@ -270,7 +270,7 @@ namespace AmigaNet.Legion
             }
 
             // Legs Slot (Zone 13)
-            GADGET(cx + 46, cy + 60, 22, 20, "L", 5, 5, 0, 16, 13);
+            GADGET(cx + 46, cy + 60, 22, 20, "", 5, 5, 0, 16, 13);
             int legsItem = ARMIA[arm, selectedUnit, TNOGI];
             if (legsItem > 0)
             {
@@ -278,7 +278,7 @@ namespace AmigaNet.Legion
             }
 
             // Left Hand (Zone 14)
-            GADGET(cx + 20, cy + 38, 22, 20, "LHand", 5, 5, 0, 16, 14);
+            GADGET(cx + 20, cy + 38, 22, 20, "", 5, 5, 0, 16, 14);
             int leftItem = ARMIA[arm, selectedUnit, TLEWA];
             if (leftItem > 0)
             {
@@ -286,7 +286,7 @@ namespace AmigaNet.Legion
             }
 
             // Right Hand (Zone 15)
-            GADGET(cx + 72, cy + 38, 22, 20, "RHand", 5, 5, 0, 16, 15);
+            GADGET(cx + 72, cy + 38, 22, 20, "", 5, 5, 0, 16, 15);
             int rightItem = ARMIA[arm, selectedUnit, TPRAWA];
             if (rightItem > 0)
             {
@@ -294,8 +294,6 @@ namespace AmigaNet.Legion
             }
 
             // Backpack Slots (Zones 16-23, 2 rows of 4) - original style: K1=0, K2=5, K3=0, K4=16
-            screens.Ink(16, 19);
-            screens.Text(cx + 6, cy + 88, "PLECAK:");
             for (int b = 0; b < 8; b++)
             {
                 int bx = cx + 6 + (b % 4) * 26;
@@ -309,10 +307,6 @@ namespace AmigaNet.Legion
                 }
             }
 
-            // Unit Stats Summary (compact, at bottom of center panel)
-            int weight = ARMIA[arm, selectedUnit, TWAGA];
-            screens.Ink(20, 19);
-            screens.Text(cx + 6, cy + 138, $"Waga:{weight}");
         }
 
         /// <summary>
@@ -359,9 +353,6 @@ namespace AmigaNet.Legion
             // Clear stats area with panel bg=19 (like original stats panel)
             screens.Ink(19, 30);
             screens.Bar(gx, sy - 2, gx + 105, sy + 90);
-            // Stats sub-panel border
-            screens.Ink(5);
-            screens.Box(gx + 1, sy - 2, gx + 104, sy + 90);
 
             // Race name
             int rasa = ARMIA[arm, unit, TRASA];

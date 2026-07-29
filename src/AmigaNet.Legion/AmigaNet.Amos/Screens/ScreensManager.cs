@@ -816,6 +816,7 @@ namespace AmigaNet.Amos.Screens
         {
             var screen = GetCurrentScreen();
             var block = screen.Blocks.FirstOrDefault(b => b.Number == number);
+            if (block == null) return;
 
             if (x < 0) x = block.X;
             if (y < 0) y = block.Y;

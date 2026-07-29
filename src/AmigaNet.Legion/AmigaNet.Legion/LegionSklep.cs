@@ -4,8 +4,74 @@ namespace AmigaNet.Legion
 {
     public partial class Legion
     {
+        private const int TOOLTIP_BLOCK = 99;
+        private bool tooltipActive;
+        private int lastTooltipItem = -1;
+        private int lastTooltipZone = -1;
+        private int lastTooltipScreen = -1;
+
+        void DRAW_TOOLTIP(int itemId, int x, int y)
+        {
+            if (itemId <= 0) return;
+
+            tooltipActive = true;
+            lastTooltipScreen = screens.Screen();
+
+            const int W = 120;
+            const int H = 52;
+
+            var baseline = screens.TextBase();
+
+            // Save area big enough to cover:
+            // - Bar inclusive right/bottom (W+1, H+1)
+            // - Text baseline offset (baseline pixels above y)
+            screens.GetBlock(TOOLTIP_BLOCK, x, y - baseline, W + 1, H + baseline + 1);
+
+            screens.Ink(0);
+            screens.Bar(x, y, x + W, y + H);
+            screens.Ink(19);
+            screens.Bar(x + 1, y + 1, x + W - 1, y + H - 1);
+            screens.Ink(0);
+            screens.Bar(x + 2, y + 2, x + W - 2, y + H - 2);
+
+            screens.Ink(31, 0);
+            screens.Text(x + 4, y + baseline + 3, BRON_S[itemId]);
+
+            screens.Ink(16, 0);
+            screens.Text(x + 4, y + baseline + 16, BRON2_S[BRON[itemId, B_TYP]]);
+            screens.Text(x + 80, y + baseline + 16, "W:" + BRON[itemId, B_WAGA]);
+
+            screens.Ink(20, 0);
+            var stats = "S:" + BRON[itemId, B_SI] + " P:" + BRON[itemId, B_PAN]
+                      + " Sz:" + BRON[itemId, B_SZ] + " E:" + BRON[itemId, B_EN];
+            screens.Text(x + 4, y + baseline + 29, stats);
+
+            screens.Ink(21, 0);
+            screens.Text(x + 4, y + baseline + 42, "Cena: " + BRON[itemId, B_CENA]);
+        }
+
+        void CLEAR_TOOLTIP()
+        {
+            if (!tooltipActive) return;
+
+            tooltipActive = false;
+            var prevScreen = screens.Screen();
+            screens.Screen(lastTooltipScreen);
+            try { screens.PutBlock(TOOLTIP_BLOCK); } catch { }
+            screens.Screen(prevScreen);
+
+            lastTooltipItem = -1;
+            lastTooltipZone = -1;
+            lastTooltipScreen = -1;
+        }
+
         void SKLEP_(int MIASTO, int SNR, int A, int NR2)
         {
+            tooltipActive = false;
+            lastTooltipItem = -1;
+            lastTooltipZone = -1;
+            lastTooltipScreen = -1;
+
             var NR = NR2;
             var TYP = MIASTA[MIASTO, SNR, M_LUDZIE];
             var PUPIL = MIASTA[MIASTO, SNR, M_PODATEK];
@@ -201,6 +267,7 @@ namespace AmigaNet.Legion
                                     }
                                     screens.Ink(0);
                                     screens.Bar(X, Y, X + 16, Y + 16);
+                                    CLEAR_TOOLTIP();
                                     SKLEP_PICK(BRO, SNR, A, NR, CENA, ZNAK, ref KONIEC);
                                 }
                             }
@@ -281,6 +348,7 @@ namespace AmigaNet.Legion
                                 }
                                 screens.Ink(0);
                                 screens.Bar(X, Y, X + 16, Y + 16);
+                                CLEAR_TOOLTIP();
                                 SKLEP_PICK(BRO, SNR, A, NR, CENA, ZNAK, ref KONIEC);
                             }
                         }
@@ -288,7 +356,34 @@ namespace AmigaNet.Legion
                 }
                 if (screens.Inkey_S() == "q" || screens.MouseKey() == PRAWY)
                 {
+                    CLEAR_TOOLTIP();
                     KONIEC = true;
+                }
+
+                var zone = screens.MouseZone();
+                var item = 0;
+
+                if (zone > 9 && zone < 30)
+                    item = SKLEP[SNR, zone - 10];
+                else if (zone > 39 && zone < 48)
+                    item = ARMIA[A, NR, TPLECAK + zone - 40];
+
+                if (item != lastTooltipItem || zone != lastTooltipZone)
+                {
+                    if (lastTooltipItem > 0) CLEAR_TOOLTIP();
+
+                    if (item > 0)
+                    {
+                        int tx = 2;
+                        int ty = (244 - 52) / 2;
+
+                        screens.Screen(2);
+                        DRAW_TOOLTIP(item, tx, ty);
+                        screens.Screen(1);
+                    }
+
+                    lastTooltipItem = item;
+                    lastTooltipZone = zone;
                 }
             }
             while (!KONIEC);
