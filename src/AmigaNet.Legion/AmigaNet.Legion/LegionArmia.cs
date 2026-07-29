@@ -205,15 +205,46 @@ namespace AmigaNet.Legion
                                     }
                                 }
 
-                                if (STREFA2 == 6)
-                                {
-                                    ZOKNO();
-                                    screens.SpriteOff(2);
-                                    INVENTORY_NEW(A);
-                                    screens.Screen(0);
-                                    screens.Sprite(2, SPX, SPY, 1);
-                                    ARMIA_RYSUJ_ROZKAZY(A, TEREN);
-                                }
+                                 if (STREFA2 == 6)
+                                 {
+                                     ZOKNO();
+                                     screens.SpriteOff(2);
+                                     _LOAD("dane/gad", 1);
+                                     screens.ScreenOpen(1, 320, 160, 32, PixelMode.Lowres);
+                                     screens.Screen(1);
+                                     screens.ReserveZone(60);
+                                     screens.GetBobPalette();
+                                     screens.SetFont(FON1);
+                                     GOBY = 44;
+                                     ARM = A;
+                                     for (var I = 1; I <= 10; I++)
+                                     {
+                                         if (ARMIA[A, I, TE] > 0)
+                                         {
+                                             NUMER = I;
+                                             I = 10;
+                                         }
+                                     }
+                                     WYBOR(1);
+                                     screens.ScreenClose(1);
+                                     for (var I = 1; I <= 50; I++)
+                                     {
+                                         screens.DelBob(GOBY + 1);
+                                     }
+                                     screens.Screen(0);
+                                     screens.Sprite(2, SPX, SPY, 1);
+                                     ARMIA_RYSUJ_ROZKAZY(A, TEREN);
+                                 }
+
+                                 if (STREFA2 == 9)
+                                 {
+                                     ZOKNO();
+                                     screens.SpriteOff(2);
+                                     INVENTORY_NEW(A);
+                                     screens.Screen(0);
+                                     screens.Sprite(2, SPX, SPY, 1);
+                                     ARMIA_RYSUJ_ROZKAZY(A, TEREN);
+                                 }
 
                                 if (STREFA2 == 8)
                                 {
@@ -320,13 +351,13 @@ namespace AmigaNet.Legion
             var WYS = 0;
             if (AWT == 1)
             {
-                WYS = 135;
+                WYS = 153;
             }
             else
             {
-                WYS = 150;
+                WYS = 168;
             }
-            OKNO(110, 70, 80, WYS);
+            OKNO(110, 55, 80, WYS);
             GADGET(OKX + 4, OKY + 4, 72, 15, "Ruch", 8, 2, 6, 31, 1);
             GADGET(OKX + 4, OKY + 40, 72, 15, "Atak", 8, 2, 6, 31, 3);
             GADGET(OKX + 4, OKY + 2 + 20, 72, 15, "Szybki Ruch", 8, 2, 6, 31, 2);
@@ -340,14 +371,15 @@ namespace AmigaNet.Legion
             }
             GADGET(OKX + 4, OKY + 76, 72, 15, "Obóz", 8, 2, 6, 31, 5);
             GADGET(OKX + 4, OKY + 94, 72, 15, "Ekwipunek", 8, 2, 6, 31, 6);
+            GADGET(OKX + 4, OKY + 112, 72, 15, "Eq (Nowy)", 8, 2, 6, 31, 9);
             if (AWT == 0)
             {
-                GADGET(OKX + 4, OKY + 112, 72, 15, "Akcja w terenie", 8, 2, 6, 31, 8);
-                GADGET(OKX + 4, OKY + 130, 72, 15, "Exit", 8, 2, 6, 31, 7);
+                GADGET(OKX + 4, OKY + 130, 72, 15, "Akcja w terenie", 8, 2, 6, 31, 8);
+                GADGET(OKX + 4, OKY + 148, 72, 15, "Exit", 8, 2, 6, 31, 7);
             }
             else
             {
-                GADGET(OKX + 4, OKY + 112, 72, 15, "Exit", 8, 2, 6, 31, 7);
+                GADGET(OKX + 4, OKY + 130, 72, 15, "Exit", 8, 2, 6, 31, 7);
             }
             var TRYB = ARMIA[A, 0, TTRYB];
             screens.Ink(23, 6);
