@@ -18,6 +18,7 @@ namespace AmigaNet.Amos.Screens
         private int currentScreen = 0;
         private bool autoView = true;
         private bool updateBobOn = false;
+        private int batchDepth;
         private bool updateSpriteOn = false;
 
         private List<AmalInfo> amalInfos = new List<AmalInfo>();
@@ -63,8 +64,21 @@ namespace AmigaNet.Amos.Screens
 
         private void UpdateDisplay(bool force = false)
         {
+            if (batchDepth > 0) return;
             if (!force && !autoView) return;
             UpdateDisplayRequested = true;
+        }
+
+        public void BeginBatch() { batchDepth++; }
+
+        public void EndBatch()
+        {
+            if (batchDepth > 0) batchDepth--;
+            if (batchDepth == 0)
+            {
+                foreach (var screen in screens) screen.IsModified = true;
+                UpdateDisplayRequested = true;
+            }
         }
 
         private Screen GetScreen(int number)
@@ -1401,6 +1415,15 @@ namespace AmigaNet.Amos.Screens
             element.Data[x + element.Width * y] = pixel;
         }
 
+        private void FlagScreenModified()
+        {
+            if (batchDepth == 0)
+            {
+                var screen = GetCurrentScreen();
+                screen.IsModified = true;
+            }
+        }
+
         private void PutDataIntoScreen(IGraphicElement element)
         {
             var screen = GetCurrentScreen();
@@ -1430,7 +1453,7 @@ namespace AmigaNet.Amos.Screens
                         }
                     }
                 }
-                screen.IsModified = true;
+                FlagScreenModified();
             }
         }
 
@@ -1456,7 +1479,7 @@ namespace AmigaNet.Amos.Screens
                 }
             }
 
-            screen.IsModified = true;
+            FlagScreenModified();
         }
 
         private void PutDataIntoScreen(ImageData imageData, int x, int y, Pixel filterPixel, Pixel replacePixel)
@@ -1486,7 +1509,7 @@ namespace AmigaNet.Amos.Screens
                 }
             }
 
-            screen.IsModified = true;
+            FlagScreenModified();
         }
 
         /// <summary>

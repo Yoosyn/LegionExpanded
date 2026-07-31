@@ -32,7 +32,6 @@ namespace AmigaNet.Legion
             // Calculate sector based on selected unit's tile position
             int sek = SEKTOR(ARMIA[ARM, selectedUnit, TX], ARMIA[ARM, selectedUnit, TY]);
 
-            // Load item bob graphics (not available in map/army context)
             int savedBobCount = screens.GetBobCount();
             int savedGoby = GOBY;
             _LOAD("dane/gad", 0);
@@ -46,16 +45,16 @@ namespace AmigaNet.Legion
             screens.ScreenHide();
             screens.View();
             screens.ScreenDisplay(1, 130, 120, 320, 190);
-            int screenOffX = 130;
-            int screenOffY = 120;
             screens.Colour(0, 2, 1, 0);
 
-            // Initial full draw (like WYBOR: draw everything once, then show)
+            // Initial full draw (batch mode defers all texture rebuilds until after View)
+            screens.BeginBatch();
             INVENTORY_NEW_DRAW_BACKGROUND();
             INVENTORY_NEW_DRAW_ROSTER(ARM, selectedUnit);
             INVENTORY_NEW_DRAW_UNIT(ARM, selectedUnit);
             INVENTORY_NEW_DRAW_GROUND(sek, groundScroll);
             INVENTORY_NEW_DRAW_STATS(ARM, selectedUnit);
+            screens.EndBatch();
             screens.ScreenShow();
             screens.View();
 
@@ -74,9 +73,11 @@ namespace AmigaNet.Legion
                             selectedUnit = zone;
                             NUMER = selectedUnit;
                             WAGA(ARM, selectedUnit);
+                            screens.BeginBatch();
                             INVENTORY_NEW_DRAW_ROSTER(ARM, selectedUnit);
                             INVENTORY_NEW_DRAW_UNIT(ARM, selectedUnit);
                             INVENTORY_NEW_DRAW_STATS(ARM, selectedUnit);
+                            screens.EndBatch();
                         }
                     }
                     // Paperdoll Equipment Slots (Zones 11-15): pick up item for dragging
@@ -90,7 +91,9 @@ namespace AmigaNet.Legion
                             {
                                 PRZELICZ(slotIdx - TGLOWA, -1);
                                 ARMIA[ARM, selectedUnit, slotIdx] = 0;
+                                screens.BeginBatch();
                                 INVENTORY_NEW_DRAW_UNIT(ARM, selectedUnit);
+                                screens.EndBatch();
                                 INVENTORY_NEW_PICK(item, ARM, selectedUnit, sek, slotIdx, false, groundScroll);
                             }
                         }
@@ -103,7 +106,9 @@ namespace AmigaNet.Legion
                         if (item > 0)
                         {
                             ARMIA[ARM, selectedUnit, TPLECAK + bpSlot] = 0;
+                            screens.BeginBatch();
                             INVENTORY_NEW_DRAW_UNIT(ARM, selectedUnit);
+                            screens.EndBatch();
                             INVENTORY_NEW_PICK(item, ARM, selectedUnit, sek, TPLECAK + bpSlot, false, groundScroll);
                         }
                     }
@@ -117,7 +122,9 @@ namespace AmigaNet.Legion
                             if (item > 0)
                             {
                                 GLEBA[sek, gSlot] = 0;
+                                screens.BeginBatch();
                                 INVENTORY_NEW_DRAW_GROUND(sek, groundScroll);
+                                screens.EndBatch();
                                 INVENTORY_NEW_PICK(item, ARM, selectedUnit, sek, gSlot, true, groundScroll);
                             }
                         }
@@ -126,21 +133,27 @@ namespace AmigaNet.Legion
                     else if (zone == 50 && groundScroll > 0)
                     {
                         groundScroll -= 4;
+                        screens.BeginBatch();
                         INVENTORY_NEW_DRAW_GROUND(sek, groundScroll);
+                        screens.EndBatch();
                     }
                     else if (zone == 51 && groundScroll + 4 < 8)
                     {
                         groundScroll += 4;
+                        screens.BeginBatch();
                         INVENTORY_NEW_DRAW_GROUND(sek, groundScroll);
+                        screens.EndBatch();
                     }
                     // Quick Action: Auto-Equip selected unit (Zone 60)
                     else if (zone == 60)
                     {
                         INVENTORY_NEW_AUTO_EQUIP(ARM, selectedUnit, sek);
                         WAGA(ARM, selectedUnit);
+                        screens.BeginBatch();
                         INVENTORY_NEW_DRAW_UNIT(ARM, selectedUnit);
                         INVENTORY_NEW_DRAW_GROUND(sek, groundScroll);
                         INVENTORY_NEW_DRAW_STATS(ARM, selectedUnit);
+                        screens.EndBatch();
                     }
                     // Exit Button (Zone 99)
                     else if (zone == 99)
