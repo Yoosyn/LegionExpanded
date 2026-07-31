@@ -23,6 +23,16 @@ namespace AmigaNet.Legion
             USTAW_FONT("defender2", 8);
             screens.ScreenToFront(1);
             NUMER = 1;
+            for (var I = 0; I <= 10; I++) AUTO[I] = 1;
+            for (var I = 1; I <= 10; I++)
+            {
+                AutoFireTargetIdx[I] = 0;
+                AutoFireTargetIdxW[I] = 0;
+                FireCooldown[I] = 0;
+                FireCooldownW[I] = 0;
+                AutoFireReset(ARM, I);
+                AutoFireReset(WRG, I);
+            }
             EKRAN1();
             screens.Screen(0);
             MARKERS();
@@ -33,6 +43,7 @@ namespace AmigaNet.Legion
             screens.View();
             screens.BobUpdate();
             screens.WaitVbl();
+            RYS_PRZYCISK_AUTO();
 
             while (true)
             {
@@ -40,20 +51,37 @@ namespace AmigaNet.Legion
                 var HY = screens.YMouse();
                 if (screens.MouseClick() == 1)
                 {
-                    var STREFA0 = screens.MouseZone();
-                    if (STREFA0 < 11 && STREFA0 > 0)
+                    var MX = screens.XMouse();
+                    var MY = screens.YMouse();
+                    var autoClicked = MX >= AUTO_BTN_X && MX <= AUTO_BTN_X + AUTO_BTN_W
+                                   && MY >= AUTO_BTN_Y && MY <= AUTO_BTN_Y + AUTO_BTN_H;
+                    if (autoClicked)
                     {
-                        NUMER = STREFA0;
-                        SELECT(ARM, NUMER);
-                    }
-                    if (STREFA0 > 10 && STREFA0 < 21)
-                    {
-                        screens.Screen(1);
-                        WYKRESY(WRG, STREFA0 - 10);
-                        while (screens.MouseKey() == LEWY) { }
-                        if (NUMER > 0)
+                        AUTO[NUMER] = 1 - AUTO[NUMER];
+                        if (AUTO[NUMER] == 0 && ARMIA[ARM, NUMER, TTRYB] == 9)
                         {
-                            WYKRESY(ARM, NUMER);
+                            ARMIA[ARM, NUMER, TTRYB] = 0;
+                            screens.BobOff(51);
+                        }
+                        RYS_PRZYCISK_AUTO();
+                    }
+                    if (!autoClicked)
+                    {
+                        var STREFA0 = screens.MouseZone();
+                        if (STREFA0 < 11 && STREFA0 > 0)
+                        {
+                            NUMER = STREFA0;
+                            SELECT(ARM, NUMER);
+                        }
+                        if (STREFA0 > 10 && STREFA0 < 21)
+                        {
+                            screens.Screen(1);
+                            WYKRESY(WRG, STREFA0 - 10);
+                            while (screens.MouseKey() == LEWY) { }
+                            if (NUMER > 0)
+                            {
+                                WYKRESY(ARM, NUMER);
+                            }
                         }
                     }
                 }
@@ -83,6 +111,17 @@ namespace AmigaNet.Legion
                         GADUP(LAST_GAD);
                         var STREFA = screens.MouseZone();
                         A_S = A_S.ToUpperInvariant();
+                        if (A_S == "F")
+                        {
+                            AUTO[NUMER] = 1 - AUTO[NUMER];
+                            if (AUTO[NUMER] == 0 && ARMIA[ARM, NUMER, TTRYB] == 9)
+                            {
+                                ARMIA[ARM, NUMER, TTRYB] = 0;
+                            }
+                            STREFA = 0;
+                            SELECT(ARM, NUMER);
+                            RYS_PRZYCISK_AUTO();
+                        }
                         if (A_S == "R") STREFA = 1;
                         if (A_S == "A") STREFA = 2;
                         if (A_S == "S") STREFA = 3;
@@ -282,6 +321,10 @@ namespace AmigaNet.Legion
             {
                 GADE = 4;
             }
+            if (TRYB == 9)
+            {
+                GADE = 3;
+            }
             GADUP(LAST_GAD);
             GADDOWN(GADE);
             LAST_GAD = GADE;
@@ -349,6 +392,22 @@ namespace AmigaNet.Legion
             if (GN == 3) GADGET(244, 2, 20, 20, "bob12", 0, 2, 16, 4, 0);
             if (GN == 4) GADGET(266, 2, 20, 20, "bob13", 0, 2, 16, 4, 0);
             if (GN == 10) GADGET(297, 2, 20, 20, "bob14", 0, 2, 16, 4, 0);
+            screens.Screen(SC);
+        }
+
+        void RYS_PRZYCISK_AUTO()
+        {
+            var SC = screens.Screen();
+            screens.Screen(0);
+            var on = AUTO[NUMER] == 1;
+            screens.Ink(2);
+            screens.Bar(AUTO_BTN_X, AUTO_BTN_Y, AUTO_BTN_X + AUTO_BTN_W, AUTO_BTN_Y + AUTO_BTN_H);
+            screens.Ink(19);
+            screens.Bar(AUTO_BTN_X + 1, AUTO_BTN_Y + 1, AUTO_BTN_X + AUTO_BTN_W - 1, AUTO_BTN_Y + AUTO_BTN_H - 1);
+            screens.Ink(0);
+            screens.Polyline(AUTO_BTN_X, AUTO_BTN_Y + AUTO_BTN_H, AUTO_BTN_X + AUTO_BTN_W, AUTO_BTN_Y + AUTO_BTN_H, AUTO_BTN_X + AUTO_BTN_W, AUTO_BTN_Y);
+            screens.Ink(on ? 5 : 2, 19);
+            screens.Text(AUTO_BTN_X + 1, AUTO_BTN_Y + 2, "A");
             screens.Screen(SC);
         }
 
@@ -665,8 +724,19 @@ namespace AmigaNet.Legion
                             // Track target position every tick for velocity estimation
                             if (tgtIdx > 0 && ARMIA[WRG, tgtIdx, TE] > 0)
                             {
-                                AutoFirePrevTX[I] = ARMIA[WRG, tgtIdx, TX];
-                                AutoFirePrevTY[I] = ARMIA[WRG, tgtIdx, TY];
+                                AutoFirePush(ARM, I, ARMIA[WRG, tgtIdx, TX], ARMIA[WRG, tgtIdx, TY]);
+                            }
+                            // Auto-acquire a new target when the current one is dead/missing
+                            if (tgtIdx <= 0 || ARMIA[WRG, tgtIdx, TE] <= 0)
+                            {
+                                var alt = AutoWyszukajCel(ARM, I, WRG, 0);
+                                if (alt > 0)
+                                {
+                                    tgtIdx = alt;
+                                    AutoFireTargetIdx[I] = alt;
+                                    AutoFireReset(ARM, I);
+                                    AutoFirePush(ARM, I, ARMIA[WRG, alt, TX], ARMIA[WRG, alt, TY]);
+                                }
                             }
                             if (FireCooldown[I] > 0)
                             {
@@ -687,21 +757,10 @@ namespace AmigaNet.Legion
                                               (BTP == 9 && BTL != 12);
                                 if (canFire)
                                 {
-                                    int aimX, aimY;
-                                    if (tgtIdx > 0 && ARMIA[WRG, tgtIdx, TE] > 0)
-                                    {
-                                        // Auto-aim: extrapolate target movement + spread
-                                        var (ax, ay) = ComputeAutoAim(ARM, I, WRG, tgtIdx);
-                                        aimX = (int)ax;
-                                        aimY = (int)ay;
-                                    }
-                                    else
-                                    {
-                                        // No valid target unit, fire at stored position
-                                        aimX = ARMIA[ARM, I, TCELX];
-                                        aimY = ARMIA[ARM, I, TCELY];
-                                    }
-                                    FireProjectileFromUnit(ARM, I, aimX, aimY);
+                                    // Fire only if the line of fire is clear of friendlies
+                                    int aimX = ARMIA[ARM, I, TCELX];
+                                    int aimY = ARMIA[ARM, I, TCELY];
+                                    ProbujOddacStrzal(ARM, I, WRG, ref tgtIdx, ref aimX, ref aimY);
                                 }
                                 else
                                 {
@@ -767,8 +826,19 @@ namespace AmigaNet.Legion
                             // Track target position every tick for velocity estimation
                             if (tgtIdx > 0 && ARMIA[ARM, tgtIdx, TE] > 0)
                             {
-                                AutoFirePrevTXW[I] = ARMIA[ARM, tgtIdx, TX];
-                                AutoFirePrevTYW[I] = ARMIA[ARM, tgtIdx, TY];
+                                AutoFirePush(WRG, I, ARMIA[ARM, tgtIdx, TX], ARMIA[ARM, tgtIdx, TY]);
+                            }
+                            // Auto-acquire a new target when the current one is dead/missing
+                            if (tgtIdx <= 0 || ARMIA[ARM, tgtIdx, TE] <= 0)
+                            {
+                                var alt = AutoWyszukajCel(WRG, I, ARM, 0);
+                                if (alt > 0)
+                                {
+                                    tgtIdx = alt;
+                                    AutoFireTargetIdxW[I] = alt;
+                                    AutoFireReset(WRG, I);
+                                    AutoFirePush(WRG, I, ARMIA[ARM, alt, TX], ARMIA[ARM, alt, TY]);
+                                }
                             }
                             if (FireCooldownW[I] > 0)
                             {
@@ -788,21 +858,10 @@ namespace AmigaNet.Legion
                                               (BTP == 9 && BTL != 12);
                                 if (canFire)
                                 {
-                                    int aimX, aimY;
-                                    if (tgtIdx > 0 && ARMIA[ARM, tgtIdx, TE] > 0)
-                                    {
-                                        // Auto-aim: extrapolate target movement + spread
-                                        var (ax, ay) = ComputeAutoAim(WRG, I, ARM, tgtIdx);
-                                        aimX = (int)ax;
-                                        aimY = (int)ay;
-                                    }
-                                    else
-                                    {
-                                        // No valid target, fire at stored position
-                                        aimX = ARMIA[WRG, I, TCELX];
-                                        aimY = ARMIA[WRG, I, TCELY];
-                                    }
-                                    FireProjectileFromUnit(WRG, I, aimX, aimY);
+                                    // Fire only if the line of fire is clear of friendlies
+                                    int aimX = ARMIA[WRG, I, TCELX];
+                                    int aimY = ARMIA[WRG, I, TCELY];
+                                    ProbujOddacStrzal(WRG, I, ARM, ref tgtIdx, ref aimX, ref aimY);
                                 }
                                 else
                                 {
@@ -830,6 +889,7 @@ namespace AmigaNet.Legion
                 Thread.Sleep(80); // not included in original Legion, added here to control action speed
 
                 screens.BobUpdate();
+                RYS_PRZYCISK_AUTO();
                 screens.WaitVbl();
 
                 if (HALAS > 3 && MUZYKA)
@@ -1540,6 +1600,14 @@ namespace AmigaNet.Legion
                 screens.GrWriting(0);
                 screens.Ink(13, 20);
                 screens.Text(80, 15, ARMIA_S[A, NR]);
+                if (AUTO[NUMER] == 1)
+                {
+                    screens.Text(80, 20, "A:ON");
+                }
+                else
+                {
+                    screens.Text(80, 20, "A:OFF");
+                }
                 screens.GrWriting(1);
             }
             while (screens.MouseKey() == LEWY) { }
@@ -1595,7 +1663,7 @@ namespace AmigaNet.Legion
             var B2 = ARMIA[ARM, NUMER, TPRAWA];
             var BT1 = BRON[B1, B_TYP];
             var BT2 = BRON[B2, B_TYP];
-            //'szybko�� lotu pocisku 
+            //'szybkość lotu pocisku 
             if ((BT1 == 4 && BT2 == 5 && STRZALY[NUMER] > 0) ||
                 (BT1 == 5 && BT2 == 4 && STRZALY[NUMER] > 0) ||
                 (BT1 == 15 && BT2 == 16) ||
@@ -1603,30 +1671,62 @@ namespace AmigaNet.Legion
                 (BT1 == 9 && BT2 != 12) ||
                 (BT2 == 9 && BT1 != 12))
             {
-                // Select target position
-                _GET_XY(0, 0, 0);
-                ARMIA[ARM, NUMER, TCELX] = OX;
-                ARMIA[ARM, NUMER, TCELY] = OY;
-                // Detect target unit for auto-aim tracking
-                var zone = screens.Zone(OX, OY);
-                if (zone > 10 && zone < 21)
+                int targetX;
+                int targetY;
+                if (AUTO[NUMER] == 1)
                 {
-                    AutoFireTargetIdx[NUMER] = zone - 10;
-                    AutoFirePrevTX[NUMER] = ARMIA[WRG, zone - 10, TX];
-                    AutoFirePrevTY[NUMER] = ARMIA[WRG, zone - 10, TY];
+                    var cel = AutoWyszukajCel(ARM, NUMER, WRG, 0);
+                    if (cel == 0)
+                    {
+                        GADUP(3);
+                        return;
+                    }
+                    targetX = ARMIA[WRG, cel, TX];
+                    targetY = ARMIA[WRG, cel, TY];
+                    AutoFireTargetIdx[NUMER] = cel;
+                    AutoFireReset(ARM, NUMER);
+                    AutoFirePush(ARM, NUMER, targetX, targetY);
                 }
                 else
                 {
-                    AutoFireTargetIdx[NUMER] = 0;
+                    _GET_XY(0, 0, 0);
+                    targetX = OX;
+                    targetY = OY;
+                    var zone = screens.Zone(OX, OY);
+                    if (zone > 10 && zone < 21)
+                    {
+                        AutoFireTargetIdx[NUMER] = zone - 10;
+                        AutoFireReset(ARM, NUMER);
+                        AutoFirePush(ARM, NUMER, ARMIA[WRG, zone - 10, TX], ARMIA[WRG, zone - 10, TY]);
+                    }
+                    else
+                    {
+                        AutoFireTargetIdx[NUMER] = 0;
+                    }
                 }
-                // Enter auto-fire mode
-                ARMIA[ARM, NUMER, TTRYB] = 9;
-                screens.Screen(0);
-                screens.Bob(51, OX, OY + 12, 2 + BUBY);
-                screens.BobUpdate();
-                screens.WaitVbl();
-                // Fire first projectile immediately
-                FireProjectileFromUnit(ARM, NUMER, OX, OY);
+                ARMIA[ARM, NUMER, TCELX] = targetX;
+                ARMIA[ARM, NUMER, TCELY] = targetY;
+                var tgtIdx = AutoFireTargetIdx[NUMER];
+                int aimX = targetX;
+                int aimY = targetY;
+                if (AUTO[NUMER] == 1)
+                {
+                    ARMIA[ARM, NUMER, TTRYB] = 9;
+                    screens.Screen(0);
+                    screens.Bob(51, targetX, targetY + 12, 2 + BUBY);
+                    screens.BobUpdate();
+                    screens.WaitVbl();
+                    ProbujOddacStrzal(ARM, NUMER, WRG, ref tgtIdx, ref aimX, ref aimY);
+                }
+                else
+                {
+                    ARMIA[ARM, NUMER, TTRYB] = 0;
+                    screens.Screen(0);
+                    screens.Bob(51, targetX, targetY + 12, 2 + BUBY);
+                    screens.BobUpdate();
+                    screens.WaitVbl();
+                    ProbujOddacStrzal(ARM, NUMER, WRG, ref tgtIdx, ref aimX, ref aimY);
+                }
             }
             else
             {
@@ -2385,53 +2485,21 @@ namespace AmigaNet.Legion
         /// </summary>
         (double aimX, double aimY) ComputeAutoAim(int army, int unitIndex, int targetArmy, int targetIdx)
         {
-            // Get target's current position
             var curTX = (double)ARMIA[targetArmy, targetIdx, TX];
             var curTY = (double)ARMIA[targetArmy, targetIdx, TY];
 
-            // Get previous position for velocity estimation
-            double prevTX, prevTY;
-            if (army == WRG)
-            {
-                prevTX = AutoFirePrevTXW[unitIndex];
-                prevTY = AutoFirePrevTYW[unitIndex];
-            }
-            else
-            {
-                prevTX = AutoFirePrevTX[unitIndex];
-                prevTY = AutoFirePrevTY[unitIndex];
-            }
+            var (velX, velY) = AutoFireVelocity(army, unitIndex, curTX, curTY);
 
-            // Target velocity per tick
-            var velX = curTX - prevTX;
-            var velY = curTY - prevTY;
-
-            // Store current as previous for next tick
-            if (army == WRG)
-            {
-                AutoFirePrevTXW[unitIndex] = curTX;
-                AutoFirePrevTYW[unitIndex] = curTY;
-            }
-            else
-            {
-                AutoFirePrevTX[unitIndex] = curTX;
-                AutoFirePrevTY[unitIndex] = curTY;
-            }
-
-            // Estimate time-to-impact: distance / effective projectile speed per tick
             var shooterX = (double)ARMIA[army, unitIndex, TX];
             var shooterY = (double)ARMIA[army, unitIndex, TY] - 20;
             var dx = curTX - shooterX;
             var dy = curTY - shooterY;
             var dist = Math.Sqrt(dx * dx + dy * dy) + 1;
-            // Effective speed per tick = normalized velocity (1.0) * PROJECTILE_SPEED
             var timeToImpact = dist / PROJECTILE_SPEED;
 
-            // Extrapolate target position at time of impact
             var aimX = curTX + velX * timeToImpact;
             var aimY = curTY + velY * timeToImpact;
 
-            // Add random angular spread (reduced for elves)
             var race = ARMIA[army, unitIndex, TRASA];
             var spreadDeg = RASY[race, 4] == 4 ? 4.0 : AIM_SPREAD_DEGREES;
             var aimDX = aimX - shooterX;
@@ -2444,6 +2512,176 @@ namespace AmigaNet.Legion
             aimY = shooterY + Math.Sin(aimAngle) * aimDist;
 
             return (aimX, aimY);
+        }
+
+        void AutoFireReset(int army, int unitIndex)
+        {
+            if (army == WRG)
+            {
+                AutoFireHistCountW[unitIndex] = 0;
+                AutoFireHistIdxW[unitIndex] = 0;
+            }
+            else
+            {
+                AutoFireHistCount[unitIndex] = 0;
+                AutoFireHistIdx[unitIndex] = 0;
+            }
+        }
+
+        void AutoFirePush(int army, int unitIndex, double x, double y)
+        {
+            int[] idx, cnt;
+            double[,] hx, hy;
+            if (army == WRG)
+            {
+                idx = AutoFireHistIdxW;
+                cnt = AutoFireHistCountW;
+                hx = AutoFireHistTXW;
+                hy = AutoFireHistTYW;
+            }
+            else
+            {
+                idx = AutoFireHistIdx;
+                cnt = AutoFireHistCount;
+                hx = AutoFireHistTX;
+                hy = AutoFireHistTY;
+            }
+            var head = idx[unitIndex];
+            hx[unitIndex, head] = x;
+            hy[unitIndex, head] = y;
+            head = (head + 1) % 4;
+            idx[unitIndex] = head;
+            if (cnt[unitIndex] < 4) cnt[unitIndex]++;
+        }
+
+        (double vx, double vy) AutoFireVelocity(int army, int unitIndex, double curX, double curY)
+        {
+            int[] idx, cnt;
+            double[,] hx, hy;
+            if (army == WRG)
+            {
+                idx = AutoFireHistIdxW;
+                cnt = AutoFireHistCountW;
+                hx = AutoFireHistTXW;
+                hy = AutoFireHistTYW;
+            }
+            else
+            {
+                idx = AutoFireHistIdx;
+                cnt = AutoFireHistCount;
+                hx = AutoFireHistTX;
+                hy = AutoFireHistTY;
+            }
+            var count = cnt[unitIndex];
+            if (count < 2) return (0, 0);
+            var oldestIdx = count < 4 ? 0 : idx[unitIndex];
+            var oldestX = hx[unitIndex, oldestIdx];
+            var oldestY = hy[unitIndex, oldestIdx];
+            var span = count - 1;
+            return ((curX - oldestX) / span, (curY - oldestY) / span);
+        }
+
+        int ZnajdzBlokadeSojusznika(int army, int unitIndex, double celX, double celY)
+        {
+            var x1 = (double)ARMIA[army, unitIndex, TX];
+            var y1 = (double)ARMIA[army, unitIndex, TY] - 20;
+            for (var k = 1; k <= 10; k++)
+            {
+                if (k == unitIndex) continue;
+                if (ARMIA[army, k, TE] <= 0) continue;
+                var rx1 = (double)ARMIA[army, k, TX] - 15;
+                var rx2 = (double)ARMIA[army, k, TX] + 15;
+                var ry1 = (double)ARMIA[army, k, TY] - 15;
+                var ry2 = (double)ARMIA[army, k, TY];
+                var dx = celX - x1;
+                var dy = celY - y1;
+                double tmin = 0, tmax = 1;
+                if (Math.Abs(dx) < 0.0001)
+                {
+                    if (x1 < rx1 || x1 > rx2) continue;
+                }
+                else
+                {
+                    var t1 = (rx1 - x1) / dx;
+                    var t2 = (rx2 - x1) / dx;
+                    if (t1 > t2) { var tmp = t1; t1 = t2; t2 = tmp; }
+                    tmin = Math.Max(tmin, t1);
+                    tmax = Math.Min(tmax, t2);
+                    if (tmin > tmax) continue;
+                }
+                if (Math.Abs(dy) < 0.0001)
+                {
+                    if (y1 < ry1 || y1 > ry2) continue;
+                }
+                else
+                {
+                    var t1 = (ry1 - y1) / dy;
+                    var t2 = (ry2 - y1) / dy;
+                    if (t1 > t2) { var tmp = t1; t1 = t2; t2 = tmp; }
+                    tmin = Math.Max(tmin, t1);
+                    tmax = Math.Min(tmax, t2);
+                    if (tmin > tmax) continue;
+                }
+                return k;
+            }
+            return 0;
+        }
+
+        int AutoWyszukajCel(int shooterArmy, int shooterIdx, int enemyArmy, int preferred)
+        {
+            var best = 0;
+            var bestDist = double.MaxValue;
+            var sx = (double)ARMIA[shooterArmy, shooterIdx, TX];
+            var sy = (double)ARMIA[shooterArmy, shooterIdx, TY];
+            for (var k = 1; k <= 10; k++)
+            {
+                if (k == preferred) continue;
+                if (ARMIA[enemyArmy, k, TE] <= 0) continue;
+                var ex = (double)ARMIA[enemyArmy, k, TX];
+                var ey = (double)ARMIA[enemyArmy, k, TY];
+                if (ZnajdzBlokadeSojusznika(shooterArmy, shooterIdx, ex, ey) != 0) continue;
+                var ddx = ex - sx;
+                var ddy = ey - sy;
+                var d = ddx * ddx + ddy * ddy;
+                if (d < bestDist)
+                {
+                    bestDist = d;
+                    best = k;
+                }
+            }
+            return best;
+        }
+
+        bool ProbujOddacStrzal(int army, int unitIndex, int enemyArmy, ref int celIdx, ref int aimX, ref int aimY)
+        {
+            if (celIdx > 0 && ARMIA[enemyArmy, celIdx, TE] > 0)
+            {
+                var (ax, ay) = ComputeAutoAim(army, unitIndex, enemyArmy, celIdx);
+                if (ZnajdzBlokadeSojusznika(army, unitIndex, ax, ay) == 0)
+                {
+                    aimX = (int)ax;
+                    aimY = (int)ay;
+                    FireProjectileFromUnit(army, unitIndex, aimX, aimY);
+                    return true;
+                }
+                var alt = AutoWyszukajCel(army, unitIndex, enemyArmy, celIdx);
+                if (alt > 0)
+                {
+                    AutoFireReset(army, unitIndex);
+                    if (army == WRG) AutoFireTargetIdxW[unitIndex] = alt;
+                    else AutoFireTargetIdx[unitIndex] = alt;
+                    celIdx = alt;
+                    var (ax2, ay2) = ComputeAutoAim(army, unitIndex, enemyArmy, alt);
+                    aimX = (int)ax2;
+                    aimY = (int)ay2;
+                    FireProjectileFromUnit(army, unitIndex, aimX, aimY);
+                    return true;
+                }
+                return false;
+            }
+            if (ZnajdzBlokadeSojusznika(army, unitIndex, aimX, aimY) != 0) return false;
+            FireProjectileFromUnit(army, unitIndex, aimX, aimY);
+            return true;
         }
 
         void FireProjectileFromUnit(int army, int unitIndex, int targetX, int targetY)
@@ -4327,10 +4565,13 @@ namespace AmigaNet.Legion
                     ARMIA[WRG, NR, TCELY] = CY;
                     // Store target unit for auto-aim tracking
                     AutoFireTargetIdxW[NR] = TARGET;
-                    AutoFirePrevTXW[NR] = ARMIA[ARM, TARGET, TX];
-                    AutoFirePrevTYW[NR] = ARMIA[ARM, TARGET, TY];
-                    // Fire first projectile immediately
-                    FireProjectileFromUnit(WRG, NR, CX, CY);
+                    AutoFireReset(WRG, NR);
+                    AutoFirePush(WRG, NR, ARMIA[ARM, TARGET, TX], ARMIA[ARM, TARGET, TY]);
+                    // Fire first projectile immediately (gated by friendly-fire check)
+                    int aimX = CX;
+                    int aimY = CY;
+                    var tgtIdx = TARGET;
+                    ProbujOddacStrzal(WRG, NR, ARM, ref tgtIdx, ref aimX, ref aimY);
                 }
             }
             screens.Screen(0);

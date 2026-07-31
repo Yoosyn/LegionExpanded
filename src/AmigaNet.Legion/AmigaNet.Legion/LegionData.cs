@@ -47,10 +47,22 @@ namespace AmigaNet.Legion
         // Auto-aim target tracking
         public int[] AutoFireTargetIdx = new int[11];   // target unit index for player auto-fire (0=none)
         public int[] AutoFireTargetIdxW = new int[11];  // target unit index for enemy auto-fire (0=none)
-        public double[] AutoFirePrevTX = new double[11];  // previous target X (player)
-        public double[] AutoFirePrevTY = new double[11];  // previous target Y (player)
-        public double[] AutoFirePrevTXW = new double[11]; // previous target X (enemy)
-        public double[] AutoFirePrevTYW = new double[11]; // previous target Y (enemy)
+        // Target-position history ring buffers for averaged velocity (4 ticks)
+        public double[,] AutoFireHistTX = new double[11, 4];
+        public double[,] AutoFireHistTY = new double[11, 4];
+        public double[,] AutoFireHistTXW = new double[11, 4];
+        public double[,] AutoFireHistTYW = new double[11, 4];
+        public int[] AutoFireHistIdx = new int[11];
+        public int[] AutoFireHistIdxW = new int[11];
+        public int[] AutoFireHistCount = new int[11];
+        public int[] AutoFireHistCountW = new int[11];
+        // Per-unit Auto mode toggle for player units (1 = auto target + auto fire)
+        public int[] AUTO = new int[11];
+        // Auto-mode toggle button ("A") drawn over the battlefield, above the ranged-attack button
+        public const int AUTO_BTN_X = 379;
+        public const int AUTO_BTN_Y = 264;
+        public const int AUTO_BTN_W = 10;
+        public const int AUTO_BTN_H = 10;
 
         public int[] PREFS = new int[11];
 
