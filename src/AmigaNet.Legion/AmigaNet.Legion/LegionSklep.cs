@@ -9,16 +9,20 @@ namespace AmigaNet.Legion
         private int lastTooltipItem = -1;
         private int lastTooltipZone = -1;
         private int lastTooltipScreen = -1;
+        private int lastTooltipX = -1;
+        private int lastTooltipY = -1;
 
-        void DRAW_TOOLTIP(int itemId, int x, int y)
+        void DRAW_TOOLTIP(int itemId, int x, int y, bool showPrice = true, int bg = 0, int border = 19, int text1 = 31, int text2 = 16, int text3 = 20, int text4 = 21)
         {
             if (itemId <= 0) return;
 
             tooltipActive = true;
             lastTooltipScreen = screens.Screen();
+            lastTooltipX = x;
+            lastTooltipY = y;
 
             const int W = 120;
-            const int H = 52;
+            int H = showPrice ? 52 : 40;
 
             var baseline = screens.TextBase();
 
@@ -27,27 +31,30 @@ namespace AmigaNet.Legion
             // - Text baseline offset (baseline pixels above y)
             screens.GetBlock(TOOLTIP_BLOCK, x, y - baseline, W + 1, H + baseline + 1);
 
-            screens.Ink(0);
+            screens.Ink(bg);
             screens.Bar(x, y, x + W, y + H);
-            screens.Ink(19);
+            screens.Ink(border);
             screens.Bar(x + 1, y + 1, x + W - 1, y + H - 1);
-            screens.Ink(0);
+            screens.Ink(bg);
             screens.Bar(x + 2, y + 2, x + W - 2, y + H - 2);
 
-            screens.Ink(31, 0);
+            screens.Ink(text1, bg);
             screens.Text(x + 4, y + baseline + 3, BRON_S[itemId]);
 
-            screens.Ink(16, 0);
+            screens.Ink(text2, bg);
             screens.Text(x + 4, y + baseline + 16, BRON2_S[BRON[itemId, B_TYP]]);
             screens.Text(x + 80, y + baseline + 16, "W:" + BRON[itemId, B_WAGA]);
 
-            screens.Ink(20, 0);
+            screens.Ink(text3, bg);
             var stats = "S:" + BRON[itemId, B_SI] + " P:" + BRON[itemId, B_PAN]
                       + " Sz:" + BRON[itemId, B_SZ] + " E:" + BRON[itemId, B_EN];
             screens.Text(x + 4, y + baseline + 29, stats);
 
-            screens.Ink(21, 0);
-            screens.Text(x + 4, y + baseline + 42, "Cena: " + BRON[itemId, B_CENA]);
+            if (showPrice)
+            {
+                screens.Ink(text4, bg);
+                screens.Text(x + 4, y + baseline + 42, "Cena: " + BRON[itemId, B_CENA]);
+            }
         }
 
         void CLEAR_TOOLTIP()
@@ -63,6 +70,8 @@ namespace AmigaNet.Legion
             lastTooltipItem = -1;
             lastTooltipZone = -1;
             lastTooltipScreen = -1;
+            lastTooltipX = -1;
+            lastTooltipY = -1;
         }
 
         void SKLEP_(int MIASTO, int SNR, int A, int NR2)

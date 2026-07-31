@@ -267,3 +267,48 @@ Oba style są poprawne; wybór to trade-off:
 `INVENTORY_NEW` celowo wybrał listę (roster) by informacja była naskorowidlowana kompresji — lista 10 zajmuje mniej ekranu niż pokazywanie sylwetki każdej postaci w osobnym oknie.
 
 **Lekcja:** wzorzec WYBOR nie jest religiijny; nowa funkcja może świadomie odchodzić od niego jeśli służy innej wartości użytkowej. Ale **palette/kolory/GADGET style** zostawiaj zgodne.
+
+## 19. Współrzędne: screen lokalny vs monitor — lekcja z tooltipa WYBOR
+
+Piszesz nakładkę (tooltip, dialog, ramkę) na istniejący ekran — i „się nie rysuje". W większości przypadków nie ma żadnego błędu: rysunek trafia w złe miejsce i jest przykryty przez inny ekran.
+
+**Zasada 1 — rysunek trafia do bitmapy AKTUALNEGO screena, w jego współrzędnych LOKALNYCH.**
+
+Screen ma własny układ współrzędnych (0,0 = lewy-górny róg bitmapy), a jego pozycja na monitorze to osobna sprawa:
+- `ScreenDisplay(N, x, y, w, h)` — gdzie na monitorze leży screen (`screen.X`/`screen.Y`)
+- `OffsetX`/`OffsetY` — scroll (przesunięcie widocznego okna w obrębie bitmapy)
+
+Screen 0 w grze **nie jest** wyświetlany od (0,0): `SETUP` robi `ScreenDisplay(0, 130, 40, 320, 234)`, a mapa scrolluje się przez `ScreenOffset`. Twarde współrzędne `(100,100)` na screen 0 lądują na monitorze (230,140), a nie (100,100) — dokładnie to przydarzyło się tooltipowi WYBOR.
+
+**Zasada 2 — `XScreen`/`YScreen` przeliczają wg AKTUALNEGO screena i kompensują scroll.**
+
+```
+XScreen(x) = x - screen.X + OffsetX
+YScreen(y) = y - screen.Y + OffsetY
+```
+
+Konsekwencje:
+- Przelicznik używa screena aktualnego w momencie wywołania — najpierw `Screen(N)`, potem konwersja.
+- Wynik „goni" scroll: narysowanie w przeliczonych współrzędnych daje **stałą pozycję monitora** niezależnie od `OffsetX`/`OffsetY`.
+
+Wzorzec — tooltip nad oknem WYBOR (screen 0 ma X=130, Y=40; okno WYBOR startuje na monitor Y=162):
+
+```csharp
+screens.Screen(0);
+int tx = screens.XScreen(230); // monitor X = 130 + 100
+int ty = screens.YScreen(110); // monitor Y = 162 - 52
+DRAW_TOOLTIP(item, tx, ty, true);
+screens.Screen(1);
+```
+
+**Zasada 3 — z-order: screen późniejszy w liście = na wierzchu.**
+
+`DrawScreens` (`LegionGame.cs:220`) rysuje screeny w kolejności listy `ScreensManager.Screens`. Nakładka narysowana na screenie „pod" innym ekranem nie generuje żadnego błędu — jest po prostu niewidoczna. To najczęstsza przyczyna „się nie rysuje" bez wyjątków i logów.
+
+**Checklista niewidocznej nakładki:**
+
+1. Który screen jest `current` w momencie rysowania? (sprawdź `Screen(N)` przed rysowaniem)
+2. Gdzie ten screen jest wyświetlany? (`ScreenDisplay` — X/Y, `DisplayWidth`/`DisplayHeight`)
+3. Co go przykrywa? (kolejność listy `Screens` — ostatni = na wierzchu; okna UI to zwykle screen 1/2)
+4. Czy `OffsetX`/`OffsetY` są niezerowe? (scroll mapy — bez `XScreen`/`YScreen` pozycja „dryfuje")
+5. Czy nakładka mieści się w widocznym obszarze screena?

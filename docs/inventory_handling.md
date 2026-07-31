@@ -87,12 +87,13 @@ The drag-and-drop follows the same structure everywhere:
 
 - Displays 8 backpack slots (zones 1-8), 5 equipment slots (zones 13-17), and 8 ground slots (zones 9-12, 30-33)
 - Left-click on an item starts drag; Ctrl+click bypasses drag (auto-equip or ground-to-backpack)
+- Hovering over a slot shows an item tooltip overlay (drawn on screen 0 via `DRAW_TOOLTIP` -- see `docs/implementation/tooltip.md`)
 - Right-click exits the screen
 
 **`WYBOR_PICK(int BR, int X, int Y, int X2, int Y2, int NUMER, ref int BB, int SEK)`** (line 458)
 
 - The modal drag loop for inventory items
-- Calls `WYBOR_PICK_2()` to set up the item visual and show tooltip info
+- Calls `WYBOR_PICK_2()` to set up the dragged item visual (hotspot + mask); the item tooltip is drawn in the pick loop via `DRAW_TOOLTIP` on screen 0 (see `docs/implementation/tooltip.md`)
 - Dropping on:
   - **Backpack slot** (zones 1-8): Places item in backpack. Ammo (type 17) is consumed into ammo pool instead.
   - **Ground slot** (zones 9-12, 30-33): Places item on ground (`GLEBA` array)
@@ -103,7 +104,7 @@ The drag-and-drop follows the same structure everywhere:
 **`WYBOR_PICK_2(int BR, int X, ref int BB)`** (line 654)
 
 - Sets `HotSpot(BB, 11)` -- centers the sprite hotspot at the middle-bottom of the item icon
-- Shows item name, type, and weight in a tooltip bar
+- Item info is no longer drawn here as a bar -- the `DRAW_TOOLTIP` overlay during the drag loop replaced it (see `docs/implementation/tooltip.md`)
 - `BB = BRON[BR, B_BOB] + BROBY` -- calculates the bob/sprite index for the item
 
 **`WYBOR_AUTO_EQUIP()`** (line 834) -- Ctrl+click from backpack

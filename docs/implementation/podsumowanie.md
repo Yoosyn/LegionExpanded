@@ -4,11 +4,27 @@
 > **Powiązany dokument:** `docs/implementation/rendering-patterns.md` (sekcje #11–#18)
 > **Wniosek z iteracji `INVENTORY_NEW` (`LegionInventoryNew.cs`):** podział na regiony redrawu, paleta GADGET z WYBOR, kolor 16 = wartości, eliminacja redundancji i obramowań `Box`, save/restore bob bank.
 
+## Status wdrożenia (decyzje z 2026-07-31)
+
+| Plan | Decyzja | Stan |
+|---|---|---|
+| A1–A6 (batch, HideOn/ShowOn, kolory, GADGET, rozmiar ekranu) | ✅ zatwierdzone | **wdrożone** |
+| B1–B2 (pojedynczy ekran + redraw-regionu) | ❌ odrzucone — **układ 2 ekranów zostaje** | — |
+| C1 (paleta: wartości 16, nazwy 3, alarmy czerwone 20) | ✅ zatwierdzone | **wdrożone** |
+| C2 (przyciski → paleta WYBOR 8/2/6/31) | ✅ zatwierdzone | **wdrożone** |
+| C3 (bob tła sylwetek) | ✅ zatwierdzone | **wdrożone** (bez `_LOAD` — boby `GOBY+1` są już załadowane z bitwy) |
+| C4 (usunięcie pól klasy) / C5 (ScreenHide/Show) | ❓ bez decyzji | odłożone |
+| D1 (podsumowanie bez łupów) | ✅ zatwierdzone | **wdrożone** |
+| D2 (ekran porażki) | ❌ odrzucone — **bez ekranu porażki** | — |
+| D3 (auto-wyjście po zabraniu wszystkiego) | ✅ zatwierdzone | **wdrożone** |
+
 ---
 
 ## 1. Cel i zakres
 
 Refaktor ekranu podsumowania bitwy ("łupy") tak, aby był zgodny ze wzorcami z `rendering-patterns.md`, z zachowaniem dotychczasowej funkcjonalności (drag&drop, ctrl+click auto-equip, ammo, paginacja, discard, wyjście).
+
+**PLAN D** (§7) wychodzi poza rendering — domyka luki funkcjonalne: ekran wyniku przy wygranej bez łupów. **D2 (ekran porażki) odrzucony decyzją.**
 
 **Nie scoujemy:**
 - Przeniesienia funkcji do osobnego pliku — pozostaje w `LegionMainAction.cs`
@@ -65,22 +81,25 @@ Refaktor ekranu podsumowania bitwy ("łupy") tak, aby był zgodny ze wzorcami z 
 
 | # | Problem | Łamany wzorzec |
 |---|---|---|
-| 1 | **2 screeny zamiast 1** — Screen 2 (640×512) + Screen 1 (320×160) | #11: każdy rebuild robi `Cls(0)` Screen 2 + `Bar` Screen 1, podwójny redraw bez batcha |
+| 1 | **2 screeny zamiast 1** — Screen 2 (320×244) + Screen 1 (320×160) | #11: każdy rebuild robi `Cls(0)` Screen 2 + `Bar` Screen 1. **Świadomie akceptowane** — decyzja: układ 2 ekranów zostaje (B1 odrzucone) |
 | 2 | **Pełny `Cls(0)` Screen 2 w pętli** po każdej akcji | #11: redraw-all zamiast redraw-regionu. `Cls(0)` + ~30 operacji na klik |
-| 3 | **Brak batcha** (`Begin/EndBatch`) wokół pełnego redrawu | #1: każda operacja `Bar`/`Text`/`Box` flaguje `IsModified` → ~30 relebuildów tekstury |
-| 4 | **OUTLINE** = 4 cienie + 1 foreground, bez batcha | #1: pojedynczy OUTLINE = 5 operacji Text; 8×OUTLINE = 40 relebuildów |
+| 3 | **Brak batcha** (`Begin/EndBatch`) wokół pełnego redrawu | #1: każda operacja flaguje `IsModified`. *Szczegół techniczny:* `IsModified` to bool — rebuild tekstury i tak odbywa się **raz na klatkę Draw** (`LegionGame.cs:224-228`), więc nie ma „30 relebuildów", ale batch daje: jeden pass flag, spójność ze wzorcem i ochronę gdy między redrawami trafi się `View()`/`autoView` |
+| 4 | **OUTLINE** = 4 cienie + 1 foreground, bez batcha | #1: pojedynczy OUTLINE = 5×`Text` = 5× zapis do `screen.Data[]` + flag; 8×OUTLINE na klik = ~40 zapisów pikseli (koszt CPU, nie GPU) |
 | 5 | **`Ink(0); Bar(...); Ink(5); Box(...)` dla paneli** zamiast `GADGET` | #12, #16: GADGET istnieje, ręczne `Bar`+`Box` to overhead + dublowanie stylu |
 | 6 | **Ceny pod ikoną na kolor 30** (jasny żółty) | #14: WYBOR używa 16 (niebieski) dla wartości liczbowych; 30 zarezerwowany dla alarmów |
-| 7 | **Brak `HideOn()/ShowOn()`** wokół drag-loop | Sprite 53 może przebijać Screen 2; w `WYBOR_PICK` (`LegionWybor.cs:439,637`) są te wołania |
+| 7 | **Brak `HideOn()/ShowOn()`** wokół drag-loop | Podczas dragu widoczne 2 kursory (OS + sprite 53); `WYBOR_PICK_2` chowa kursor OS: `HideOn` `LegionWybor.cs:666`, `ShowOn` `:660` (także `LegionInventoryNew.cs:443,641`) |
 | 8 | **`varTakenCount`/`varNoSpace` to pola klasy** (3804) | Stan shared między wywołaniami; reset ręczny w ciele funkcji (3429-3430) |
 | 9 | **Grid 2×10 z ręcznym `Box`/`Bar`** | #12, #16: grid loot może być `GADGET`: `K1=0,K2=5,K3=8,K4=16` — to samo co sloty WYBOR |
 | 10 | **PPM = discard** (ale PPM też default wyjścia w WYBOR) | UX rozbieżność — do udokumentowania w kodzie |
+| 11 | **Status/komunikaty bez tła** (`3515-3523`) | #11: `OUTLINE(statusMsg)` i `OUTLINE(BATTLE_NO_SPACE)` bez `Bar` tła — bezpieczne tylko dzięki pełnemu `Cls` w pętli. **Utrzymane świadomie** — B2 (redraw-regionu) odrzucone, pełny redraw zostaje; przy ewentualnym powrocie do B2 wymagane `Bar` tła |
+| 12 | **Screen 2 otwarty jako 640×512, a wyświetlany 320×244** (`3408-3409`) | ✅ **naprawione (A6):** `ScreenOpen(2, 320, 244, ...)` — `Cls` i redrawy piszą 4× mniej pikseli |
+| 13 | **Brak podsumowania przy wygranej bez łupów** (`3390: return` gdy `lupItems.Count == 0`) i **brak ekranu po porażce** (guard `WYNIK_AKCJI != 1` na `3376`) | ✅ **D1 wdrożone** (wygrana bez łupów → podsumowanie); ❌ **D2 odrzucone** (porażka wraca na mapę jak dotychczas) |
 
 ---
 
 ## 4. PLAN A — quick wins (niskie ryzyko)
 
-> Tylko `LegionMainAction.cs` — 5 miejsc. Brak zmiany struktury pętli.
+> ✅ **WDROŻONE** (A1–A6). Tylko `LegionMainAction.cs`. Brak zmiany struktury pętli.
 
 ### A1. Batch wokół pełnego redrawu Screen 2
 
@@ -103,7 +122,7 @@ screens.EndBatch();
 screens.View();
 ```
 
-(Uwaga: osobne batche dla Screen 1 i Screen 2 — bo przełącznik `Screen(N)` resetuje kontekst.)
+(Uwaga: jeden batch może objąć **oba** screeny — `EndBatch` oznacza wszystkie screeny jako zmodyfikowane (`ScreensManager.cs:79`), a `Screen(N)` nie resetuje `batchDepth`. Osobne batche mają sens tylko gdy chcesz `View()` pomiędzy ekranami.)
 
 **Weryfikacja wizualna:** brak zmian wizualnych, spadek flickeru.
 **Weryfikacja kodu:** `dotnet build src/AmigaNet.Legion`, uruchom bitwę → wejdź do podsumowania → sprawdź konsolę.
@@ -143,12 +162,12 @@ screens.Box(8, 130, 310, 195);
 
 **Zamiana:**
 ```csharp
-GADGET(7, 129, 304, 70, "", 5, 0, 19, 19, -1);
+GADGET(7, 129, 304, 70, "", 5, 0, 8, 8, -1);
 ```
 
-Paleta WYBOR "panel postaci" (`K1=5, K2=0, K3=19, K4=19`).
+Paleta "Panel główny" (`K1=5, K2=0, K3=8, K4=8`) — ciemny fill. **Korekta po wdrożeniu:** początkowo użyto jasnego `K3=19` (jak panel postaci WYBOR), ale kolor 19 w palecie to `(238,170,0)` — pomarańczowy, który nie pasował do ciemnego ekranu; zmieniono na ciemny `8`.
 
-**Weryfikacja:** płaski jasny panel 19 z delikatną ramką 5, styl WYBOR.
+**Weryfikacja:** ciemny panel 8 z delikatną ramką 5, spójny z panelem ZIEMIA w INVENTORY_NEW.
 
 ### A5. Sloty grid loot → GADGET
 
@@ -175,6 +194,23 @@ GADGET(X, Y, 28, 32, "", 0, 5, 8, 16, ZONE_GRID_START + I);
 
 **Weryfikacja:** sloty z delikatną obrysówką 5 i ciemnym tłem 8, jak backpack/ground w WYBOR.
 
+### A6. Zmniejszenie Screen 2 z 640×512 do 320×244
+
+**Lokalizacja:** `3408-3409`.
+
+**Motywacja:** screen 2 jest otwarty jako 640×512, a wyświetlany tylko jako 320×244 (problem #12). `Cls(0)` i pełne redrawy piszą 4× więcej pikseli do `screen.Data[]` niż potrzeba.
+
+**Edycja:**
+```csharp
+screens.ScreenClose(2);
+screens.ScreenOpen(2, 320, 244, 32, PixelMode.Lowres);  // zamiast 640, 512
+screens.ScreenDisplay(2, 130, 40, 320, 244);
+```
+
+**Bezpieczeństwo:** restore po ekranie (`3793-3796`) i tak tworzy screen 2 od nowa (80×50) — nic poza obszarem 320×244 nie jest rysowane ani czytane.
+
+**Relacja do B1:** A6 to tymczasowe łatanie; B1 (pojedynczy ekran) eliminuje problem całkowicie. Jeśli Faza B ma być wdrożona wkrótce — A6 można pominąć.
+
 ### Podsumowanie Fazy A
 
 - **Pliki edytowane:** `LegionMainAction.cs` (5 miejsc)
@@ -186,7 +222,9 @@ GADGET(X, Y, 28, 32, "", 0, 5, 8, 16, ZONE_GRID_START + I);
 
 ## 5. PLAN B — refaktoryzacja pojedynczego ekranu
 
-> Największy zysk wydajnościowy i uproszczenie pętli. Średnie ryzyko — **backup przed commit**.
+> ❌ **ODRZUCONY.** Decyzja: układ dwóch ekranów zostaje. Sekcja zachowana jako dokumentacja alternatywy i uzasadnienia.
+>
+> **Jeśli kiedyś wrócić do tematu:** największy zysk wydajnościowy i uproszczenie pętli. Średnie ryzyko — **backup przed commit**.
 
 ### B1. Pojedynczy ekran zamiast 2
 
@@ -244,6 +282,8 @@ GADGET(X, Y, 28, 32, "", 0, 5, 8, 16, ZONE_GRID_START + I);
 
 **Idempotentność (wzorzec #11):** każda funkcja zaczyna od `screens.Ink(bg, ...); screens.Bar(x1, y1, x2, y2)` — pełne wyczyszczenie swojej strefy, nie zakłada stanu poprzedniej klatki.
 
+**Alternatywa dla `PODSUMOWANIE_DRAW_ITEM_INFO` (opcjonalnie, wzorzec #2):** zamiast redraw-regionu można użyć overlay `GetBlock`/`PutBlock` — zapisz tło panelu info przed rysowaniem statów i przywróć po. Sensowne tylko jeśli panel info ma być *chwilowy* (tooltip). W obecnym layoutcie panel jest stały — redraw-regionu jest prostszy.
+
 ### B3. Szkielet nowej pętli
 
 ```csharp
@@ -290,58 +330,43 @@ while (!KONIEC)
 
 ## 6. PLAN C — kosmetyka i spójność
 
-> Po Fazach A+B. Opcjonalnie jako kilka małych commitów.
+> C1–C3 ✅ **WDROŻONE**. C4/C5 ❓ bez decyzji — odłożone (możliwe jako osobne małe commity).
 
-### C1. Konwersja palety (wzorzec #14)
+### C1. Konwersja palety (wzorzec #14) — ✅ wdrożone
 
-| Element | Aktualnie | Proponowane |
+| Element | Aktualnie | Wdrożone |
 |---|---|---|
-| "Zwycięstwo!" | `OUTLINE(..., 31, 0)` | **zostaw 31** (żółty nagłówek OK) |
-| "Nasi: x/10" / "Pokonani wrogowie" / "Przedmioty na ziemi" / "Zabrano" | `30, 0` | `16, 0` (niebieski = wartości, jak WYBOR_WYPISZ) |
+| "Zwycięstwo!" | `OUTLINE(..., 31, 0)` | 31 (żółty nagłówek, bez zmian) |
+| "Nasi: x/10" / "Pokonani wrogowie" / "Przedmioty na ziemi" / "Zabrano" | `30, 0` | `16, 0` |
 | OUTLINE statów przedmiotu (DMG/ARM/SPD/WGT/PRICE) | `30, 0` | `16, 0` |
-| Nazwa itemu (`BRO1_S + BRO2_S`) | `31, 0` | `3, 0` (kolor 3 = nazwa/etykieta) |
-| `BATTLE_OVERWEIGHT`, `BATTLE_NO_SPACE` | `25, 0` (różowy) | `20, 0` (czerwony=alarm) — **albo zostaw 25** (decyzja) |
+| Nazwa itemu (`BRO1_S + BRO2_S`) | `31, 0` | `3, 0` |
+| `BATTLE_OVERWEIGHT`, `BATTLE_NO_SPACE` | `25, 0` (różowy) | `20, 0` (czerwony=alarm) |
 
-Przejrzeć wszystkie wystąpienia `OUTLINE(..., 30, 0)` i `OUTLINE(..., 25, 0)`.
+**Uwaga implementacyjna:** panel statów itemu ma ciemne tło `8` (A4, korekta po wdrożeniu) — w handlerze kliku obszar wewnętrzny czyszczony `Ink(8); Bar(...)`, teksty `3/16` z czarnym cieniem `0`.
 
-### C2. Przyciski "Dalej/Zabierz wszystko"
+### C2. Przyciski "Dalej/Zabierz wszystko" — ✅ wdrożone
 
-**Lokalizacja:** `3425-3426`
-```csharp
-GADGET(6, 2, 100, 38, TR("BATTLE_NEXT"),      26, 24, 25, 30, ZONE_NEXT_BUTTON);
-GADGET(110, 2, 96, 38, TR("BATTLE_TAKE_ALL"), 26, 24, 25, 30, ZONE_TAKE_ALL_BUTTON);
-```
-
-Aktualna paleta "skąpowa" (`K1=26, K2=24, K3=25, K4=30`) — pojawia się tylko tutaj.
-
-**Propozycja (paleta WYBOR "Auto/Zamknij"):**
+**Lokalizacja:** `3423-3427`
 ```csharp
 GADGET(6, 2, 100, 38, TR("BATTLE_NEXT"),      8, 2, 6, 31, ZONE_NEXT_BUTTON);
 GADGET(110, 2, 96, 38, TR("BATTLE_TAKE_ALL"), 8, 2, 6, 31, ZONE_TAKE_ALL_BUTTON);
 ```
 
-**Decyzja estetyczna** — pozostaje otwarta.
+Paleta WYBOR "Auto/Zamknij" (`8/2/6/31`). **Bonus (D1):** przycisk "Zabierz wszystko" jest rysowany tylko gdy `lupItems.Count > 0`.
 
-### C3. Bob tła (wzorce #17 + WYBOR)
+### C3. Bob tła (wzorce #17 + WYBOR) — ✅ wdrożone
 
-Jeśli chcemy dekoracji jak w WYBOR (`PasteBob(0, I*50, GOBY+1)`):
+Wdrożone bez `_LOAD`/`TrimBobs` — po bitwie boby `GOBY+1..+50` (sylwetki wojowników z `dane/gad`) są już załadowane, `GOBY` pozostaje `0`. Wzorzec jak w WYBOR (`LegionWybor.cs:11-14`):
 
 ```csharp
-int savedBobCount = screens.GetBobCount();
-int savedGoby = GOBY;
-_LOAD("dane/gad", 0);
-_LOAD("dane/glowny", 1);
-GOBY = savedBobCount;
-
-// ... w INVENTORY_NEW_DRAW_BACKGROUND():
-for (int i = 0; i <= 3; i++) screens.PasteBob(0, i * 50, GOBY + 1);
-
-// na końcu funkcji:
-screens.TrimBobs(savedBobCount);
-GOBY = savedGoby;
+// w redrawie Screen 2, zaraz po Cls(0):
+for (var I = 0; I <= 3; I++)
+{
+    screens.PasteBob(0, I * 50, GOBY + 1);
+}
 ```
 
-**Otwarte pytanie:** czy ekran podsumowania potrzebuje dekoracji tła? Jeśli tak — wdrożyć C3; jeśli nie — pominąć.
+Sylwetki wzdłuż lewej krawędzi, przykrywane przez panele (grid, panel statów) — klimat oryginalnego WYBOR. Zweryfikować wizualnie, czy sylwetka `I=0` nie koliduje z tytułem "Zwycięstwo!" (tekst rysowany później — powinien być czytelny; w razie potrzeby przesunąć tytuł w prawo lub pominąć `I=0`).
 
 ### C4. Usunięcie pól klasy `varTakenCount`/`varNoSpace`
 
@@ -369,17 +394,41 @@ screens.View();
 
 ---
 
-## 7. Kolejność wdrożenia
+## 7. PLAN D — funkcjonalne rozszerzenia (poza renderingiem)
 
-1. **Faza A** (A1–A5) — commit `refactor(podsumowanie): batch redraw + HideOn/ShowOn + GADGET panels`
-2. **Manualny test** bitew (mała/duża/przygoda)
-3. **Faza B** (B1–B2) — commit `refactor(podsumowanie): single-screen + region redraw`
-4. **Manualny test** — szczególnie drag&drop sprite 53, paginacja, ctrl+klik, PPM discard
-5. **Faza C** (C1–C5) — opcjonalnie jako kilka małych commitów
+> **D1 ✅ wdrożone, D3 ✅ wdrożone, D2 ❌ odrzucone** (decyzja: bez ekranu porażki).
+> Obserwacja z analizy: `PODSUMOWANIE_BITWY` pokazywał się **tylko przy zwycięstwie z łupami**. Lukę domyka D1.
+
+### D1. Podsumowanie przy wygranej bez łupów — ✅ wdrożone
+
+Usunięty wczesny `return` (dawna linia 3390). Przy pustym `lupItems`: tytuł + statystyki (`BATTLE_SURVIVORS`, `BATTLE_ENEMIES_KILLED`) + przycisk "Dalej" (grid i "Zabierz wszystko" nie są rysowane — `gridCount = 0`, przycisk warunkowy w setupie).
+
+### D2. Ekran porażki (`WYNIK_AKCJI == 2`) — ❌ odrzucony
+
+> Decyzja: **bez ekranu porażki** — gra wraca na mapę jak dotychczas. Sekcja zachowana jako dokumentacja możliwego przyszłego rozszerzenia.
+
+Analogiczny ekran, inny tytuł (`BATTLE_DEFEAT` — nowy klucz i18n) + statystyki strat: polegli nasi (`ARMIA[ARM, *, TE] <= 0`), ocaleni. Bez gridu łupów i drag&drop. Po "Dalej" → dotychczasowy flow wyjścia (`140-205`).
+
+**Uwaga na flow:** `PODSUMOWANIE_BITWY` jest wywoływane z `MAIN_ACTION:138` bezwarunkowo; obecny guard `WYNIK_AKCJI != 1` robi early-return. D2 = zamiana guarda na `WYNIK_AKCJI == 2` → osobna ścieżka renderu (lub parametr trybu w wspólnej funkcji). Nie zmienia to wywołania w `MAIN_ACTION`.
+
+### D3. "Zabierz wszystko" przy pustej liście — ✅ wdrożone
+
+Po `TakeAllLoot`, gdy `lupItems.Count == 0` — automatyczny `KONIEC = true` (zamiast zostawiania gracza na pustym ekranie). Dotyczy obu ścieżek: klawisz "A" i przycisk "Zabierz wszystko".
 
 ---
 
-## 8. Mapa weryfikacji
+## 8. Kolejność wdrożenia — stan: Fazy A, C1–C3, D1, D3 wdrożone
+
+1. ✅ **Faza A** (A1–A6) — `refactor(podsumowanie): batch redraw + HideOn/ShowOn + GADGET panels + screen size`
+2. ⏳ **Manualny test** bitew (mała/duża/przygoda) — do wykonania
+3. ❌ **Faza B** (B1–B2) — odrzucona (układ 2 ekranów zostaje)
+4. ⏳ **Manualny test** — szczególnie drag&drop sprite 53, paginacja, ctrl+klik, PPM discard
+5. ✅ **Faza C** (C1–C3) — wdrożona; C4/C5 bez decyzji, odłożone
+6. ✅ **Faza D** (D1, D3) — wdrożona; D2 odrzucony
+
+---
+
+## 9. Mapa weryfikacji
 
 | Co | Komenda / Akcja | Spodziewany rezultat |
 |---|---|---|
@@ -393,24 +442,30 @@ screens.View();
 | No space | Wszystkie plecaki pełne | `varNoSpace=true`, komunikat `BATTLE_NO_SPACE` |
 | Performance wizualnie | Brak flickeru przy redraw | Faza A: redukcja; Faza B: brak całkowity |
 | Restore ekranu | Po wyjściu z `PODSUMOWANIE_BITWY` | `ScreenDisplay(1, 130, 275, 320, 25)` przywrócone |
+| Wygrana bez łupów (D1) | Bitwa, po której wrogowie nic nie zostawili | Ekran wyniku z samymi statystykami + "Dalej" |
+| Take-all pusta lista (D3) | "Zabierz wszystko" gdy `lupItems` puste | Automatyczne wyjście z ekranu |
+| Sylwetki tła (C3) | Wejście w podsumowanie | 4 sylwetki wzdłuż lewej krawędzi, panele przykrywają; tytuł czytelny |
 
 ---
 
-## 9. Pytania otwarte (do rozstrzygnięcia)
+## 10. Pytania otwarte — rozstrzygnięte 2026-07-31
 
-Przed wdrożeniem Fazy C odpowiedzieć:
+1. **C1 alarmy (`OVERWEIGHT`, `NO_SPACE`)** → **czerwone (20)** ✅
+2. **C2 przyciski ("Dalej"/"Zabierz wszystko")** → **paleta WYBOR (`8/2/6/31`)** ✅
+3. **C3 bob tła** → **wdrażamy** ✅ (bez `_LOAD` — boby już załadowane z bitwy)
+4. **Faza B (pojedynczy ekran)** → **zostajemy przy układzie 2 ekranów**; A6 wdrożone
+5. **D2 ekran porażki** → **bez ekranu porażki** ❌
+6. **D1 / D3** → **wdrożone** ✅
 
-1. **C1 alarmy (`OVERWEIGHT`, `NO_SPACE`)** — czerwone (20) czy różowe (25)?
-2. **C2 przyciski ("Dalej"/"Zabierz wszystko")** — paleta WYBOR (`8/2/6/31`) czy zostają `26/24/25/30`?
-3. **C3 bob tła** — wdrażamy czy pomijamy?
-4. **Faza B (pojedynczy ekran)** — robimy czy zostawiamy układ 2-screen?
+**Pozostałe do rozstrzygnięcia:** C4 (pola klasy `varTakenCount`/`varNoSpace`), C5 (sekwencja `ScreenHide/Show`).
 
 ---
 
-## 10. Referencje
+## 11. Referencje
 
-- `docs/implementation/rendering-patterns.md` — wzorce #11–#18 (źródło inspiracji z `INVENTORY_NEW`)
-- `src/AmigaNet.Legion/AmigaNet.Legion/LegionInventoryNew.cs` — implementacja wzorców #11/#12/#14/#16
-- `src/AmigaNet.Legion/AmigaNet.Legion/LegionWybor.cs` — oryginalne `WYBOR` / `WYBOR_PICK` / `WYBOR_WYPISZ` (kanoniczna paleta i UX)
+- `docs/implementation/rendering-patterns.md` — wzorce #1–#18 (źródło inspiracji z `INVENTORY_NEW`)
+- `src/AmigaNet.Legion/AmigaNet.Legion/LegionInventoryNew.cs` — implementacja wzorców #11/#12/#14/#16; `HideOn/ShowOn` na `443,641`
+- `src/AmigaNet.Legion/AmigaNet.Legion/LegionWybor.cs` — oryginalne `WYBOR` / `WYBOR_PICK_2` / `WYBOR_WYPISZ` (kanoniczna paleta i UX; `HideOn:666`, `ShowOn:660`)
 - `src/AmigaNet.Legion/AmigaNet.Legion/LegionStrings.cs` — klucze i18n `BATTLE_*` (linia 56–74 PL, 124–142 EN)
 - `src/AmigaNet.Legion/AmigaNet.Legion/Legion.cs:1072` — definicja `GADGET` (K1/K2/K3/K4)
+- `src/AmigaNet.Legion/AmigaNet.Legion.DesktopApp/LegionGame.cs:218-228` — `DrawScreens()`: rebuild tekstury raz na klatkę (gdzie faktycznie dzieje się koszt redrawu)

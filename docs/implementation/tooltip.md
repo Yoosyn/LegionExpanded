@@ -24,27 +24,34 @@ Podpowiedzi (tooltip) dla przedmiotów w ekwipunku (`WYBOR`) i sklepie (`SKLEP_`
 
 ---
 
-## 1. Nowe metody w `Legion.cs` (lub `LegionWybor.cs`)
+## 1. Nowe metody (implementacja: `LegionSklep.cs`)
 
 ```csharp
 // Blok dla tooltipa — używamy numeru spoza zakresu używanego przez istniejący kod
 private const int TOOLTIP_BLOCK = 99;
+private bool tooltipActive;
 private int lastTooltipItem = -1;
 private int lastTooltipZone = -1;
 private int lastTooltipScreen = -1;
-private int lastTooltipX, lastTooltipY;
+private int lastTooltipX = -1;
+private int lastTooltipY = -1;
 
-void DRAW_TOOLTIP(int itemId, int x, int y)
+void DRAW_TOOLTIP(int itemId, int x, int y, bool showPrice = true)
 {
     if (itemId <= 0) return;
 
-    lastTooltipScreen = screens.Screen();
+    tooltipActive = true;
+    lastTooltipScreen = screens.Screen();  // ZAPAMIĘTAJ screen — CLEAR_TOOLTIP wróci tu z PutBlock
+    lastTooltipX = x;
+    lastTooltipY = y;
 
     const int W = 120;
-    const int H = 52;
+    int H = showPrice ? 52 : 40;
 
-    // Zapisz tło
-    screens.GetBlock(TOOLTIP_BLOCK, x, y, W, H);
+    var baseline = screens.TextBase();
+
+    // Zapisz tło (Bar jest inkluzywny o 1 px — patrz rendering-patterns.md §4)
+    screens.GetBlock(TOOLTIP_BLOCK, x, y - baseline, W + 1, H + baseline + 1);
 
     // Tło tooltipa
     screens.Ink(0);
@@ -54,41 +61,44 @@ void DRAW_TOOLTIP(int itemId, int x, int y)
     screens.Ink(0);
     screens.Bar(x + 2, y + 2, x + W - 2, y + H - 2);
 
-    // Nazwa przedmiotu
+    // Nazwa przedmiotu — baseline + N, żeby tekst był WIZUALNIE N px od góry ramki
     screens.Ink(31, 0);
-    screens.Text(x + 4, y + 3, BRON_S[itemId]);
+    screens.Text(x + 4, y + baseline + 3, BRON_S[itemId]);
 
     // Typ i waga
     screens.Ink(16, 0);
-    screens.Text(x + 4, y + 16, BRON2_S[BRON[itemId, B_TYP]]);
-    screens.Text(x + 80, y + 16, "W:" + BRON[itemId, B_WAGA]);
+    screens.Text(x + 4, y + baseline + 16, BRON2_S[BRON[itemId, B_TYP]]);
+    screens.Text(x + 80, y + baseline + 16, "W:" + BRON[itemId, B_WAGA]);
 
     // Statystyki: Siła, Pancerz, Szybkość, Energia
     screens.Ink(20, 0);
     var stats = "S:" + BRON[itemId, B_SI] + " P:" + BRON[itemId, B_PAN]
               + " Sz:" + BRON[itemId, B_SZ] + " E:" + BRON[itemId, B_EN];
-    screens.Text(x + 4, y + 29, stats);
+    screens.Text(x + 4, y + baseline + 29, stats);
 
-    // Cena
-    screens.Ink(21, 0);
-    screens.Text(x + 4, y + 42, "Cena: " + BRON[itemId, B_CENA]);
-
-    lastTooltipX = x;
-    lastTooltipY = y;
+    // Cena (w WYBOR pokazujemy — showPrice = true)
+    if (showPrice)
+    {
+        screens.Ink(21, 0);
+        screens.Text(x + 4, y + baseline + 42, "Cena: " + BRON[itemId, B_CENA]);
+    }
 }
 
 void CLEAR_TOOLTIP()
 {
-    if (lastTooltipScreen < 0) return;
+    if (!tooltipActive) return;
 
+    tooltipActive = false;
     var prevScreen = screens.Screen();
-    screens.Screen(lastTooltipScreen);
-    screens.PutBlock(TOOLTIP_BLOCK);
+    screens.Screen(lastTooltipScreen);  // screen zapisany w DRAW_TOOLTIP
+    try { screens.PutBlock(TOOLTIP_BLOCK); } catch { }
     screens.Screen(prevScreen);
 
     lastTooltipItem = -1;
     lastTooltipZone = -1;
     lastTooltipScreen = -1;
+    lastTooltipX = -1;
+    lastTooltipY = -1;
 }
 ```
 
@@ -121,20 +131,15 @@ if (item != lastTooltipItem || zone != lastTooltipZone)
 
     if (item > 0)
     {
-        int mx = screens.XMouse();
-        int my = screens.YMouse();
-
-        // Tooltip przesunięty względem kursora
-        int tx = mx + 16;
-        int ty = my + 16;
-
-        // Clamp do granic ekranu (screen 1 = 320×140)
-        if (tx + 120 > 320) tx = mx - 124;
-        if (ty + 52 > 140) ty = my - 56;
-        if (tx < 0) tx = 0;
-        if (ty < 0) ty = 0;
-
-        DRAW_TOOLTIP(item, tx, ty);
+        // STAŁA pozycja nad oknem WYBOR (monitor (230,110)), nie przy kursorze:
+        // okno ma 320×140, tooltip 120×52. XScreen/YScreen kompensują pozycję
+        // screena 0 (X=130, Y=40) i scroll mapy (OffsetX/OffsetY) — patrz
+        // rendering-patterns.md §19 (wcześniej twarde (100,100) = bug, §5).
+        screens.Screen(0);
+        int tx = screens.XScreen(230); // monitor X = 130 + 100
+        int ty = screens.YScreen(110); // monitor Y = 162 - 52
+        DRAW_TOOLTIP(item, tx, ty, true);
+        screens.Screen(1);
     }
 
     lastTooltipItem = item;
@@ -142,10 +147,13 @@ if (item != lastTooltipItem || zone != lastTooltipZone)
 }
 ```
 
-### Uwagi do WYBOR
+### Uwagi do WYBOR (stan po 2026-07-31)
 
-- Tooltip rysowany na **screen 1** (320×140) — `screens.Screen(1)` jest ustawione na starcie `WYBOR`.
-- `CLEAR_TOOLTIP` sama przełącza screen, więc nie trzeba tego robić ręcznie.
+- Tooltip rysowany jest na **screen 0** (mapa/pole bitwy), a nie na screen 1 — screen 1 (okno WYBOR) jest wyświetlany NAD screenem 0 (z-order, patrz `rendering-patterns.md` §19), więc rysowanie na screen 1 skończyłoby się przykryciem przez własne sloty okna.
+- Pozycja jest **stała na monitorze**: (230,110)..(350,162) — okno WYBOR zaczyna się na monitor Y=162, więc tooltip jest w całości nad jego górną krawędzią.
+- `XScreen`/`YScreen` przeliczają współrzędne **monitora** na lokalne **aktualnego** screena (tu: 0) i kompensują `OffsetX`/`OffsetY` (scroll mapy) — bez nich pozycja „dryfowałaby" po mapie.
+- Ten sam wzorzec obowiązuje w `WYBOR_PICK` (drag) — tooltip trzymanego przedmiotu (`LegionWybor.cs:517`).
+- `CLEAR_TOOLTIP` sama przełącza na screen zapisany w `DRAW_TOOLTIP` (`lastTooltipScreen` = 0), więc przywraca tło tam, gdzie rysowaliśmy — nie trzeba tego robić ręcznie.
 - Przed wejściem w `WYBOR_PICK` (przeciąganie) wywołaj `CLEAR_TOOLTIP()` — pick może nadpisać obszar tooltipa, a po wyjściu z picka tooltip i tak zostanie odświeżony przez hover detection w następnej iteracji.
 
 ---
@@ -170,17 +178,10 @@ if (item != lastTooltipItem || zone != lastTooltipZone)
 
     if (item > 0)
     {
-        int mx = screens.XMouse();
-        int my = screens.YMouse();
-
-        int tx = mx + 16;
-        int ty = my + 16;
-
-        // Clamp do granic ekranu (screen 2 = 320×244)
-        if (tx + 120 > 320) tx = mx - 124;
-        if (ty + 52 > 244) ty = my - 56;
-        if (tx < 0) tx = 0;
-        if (ty < 0) ty = 0;
+        // STAŁA pozycja na tle sklepu (screen 2 = 320×244) — lewy górny róg:
+        // screen 2 ma X=130, Y=40, więc lokalne (2,96) = monitor (132,136).
+        int tx = 2;
+        int ty = (244 - 52) / 2;
 
         // W sklepie główna zawartość jest na screen 2
         screens.Screen(2);
@@ -196,6 +197,7 @@ if (item != lastTooltipItem || zone != lastTooltipZone)
 ### Uwagi do SKLEP_
 
 - W sklepie główna zawartość jest na **screen 2** (320×244) — trzeba przełączyć się przed `DRAW_TOOLTIP`.
+- Pozycja stała: lokalne (2, 96) na screen 2 = monitor (132, 136) — screen 2 jest wyświetlany od (130,40). Tu nie jest potrzebna konwersja `XScreen/YScreen`, bo współrzędne są już lokalne dla screena 2 (screen nie ma scrolla).
 - Po narysowaniu tooltipa wracamy na screen 1 (dolny pasek).
 - `CLEAR_TOOLTIP` sama przełącza na właściwy screen (zapisany przez `DRAW_TOOLTIP`), więc nie ma ryzyka przywrócenia tła na złym screenie.
 - Przed `SKLEP_PICK` (kupno/sprzedaż) wywołaj `CLEAR_TOOLTIP()`.
@@ -218,6 +220,39 @@ if (lastTooltipItem > 0) CLEAR_TOOLTIP();
 ```
 
 `CLEAR_TOOLTIP` sama przełącza na właściwy screen, więc działa niezależnie od kontekstu.
+
+---
+
+## 5. Lekcja z buga — tooltip WYBOR niewidoczny (2026-07-31)
+
+**Objaw:** tooltip w starym inventory (`WYBOR`) „się nie rysuje"; w sklepie (`SKLEP_`) działa.
+
+**Przyczyna:** rysowanie na screen 0 z twardymi współrzędnymi lokalnymi:
+
+```csharp
+screens.Screen(0);
+DRAW_TOOLTIP(item, 100, 100, true); // ŹLE
+screens.Screen(1);
+```
+
+Screen 0 jest wyświetlany od monitora (130,40) (`ScreenDisplay(0, 130, 40, 320, 234)`), więc rysunek w lokalnych (100,100) lądował na monitorze (230,140), a okno WYBOR (screen 1, od monitora Y=162) przykrywało dolną część tooltipa — zostawał tylko cienki pasek nad krawędzią okna. Zero wyjątków, zero logów — „cichy" brak rysowania (z-order, patrz `rendering-patterns.md` §19).
+
+**Fix:** konwersja współrzędnych monitora na lokalne aktualnego screena (kompensuje pozycję screena i scroll):
+
+```csharp
+screens.Screen(0);
+int tx = screens.XScreen(230); // monitor X = 130 + 100
+int ty = screens.YScreen(110); // monitor Y = 162 - 52
+DRAW_TOOLTIP(item, tx, ty, true);
+screens.Screen(1);
+```
+
+**Wnioski:**
+
+- Rysunek trafia do współrzędnych lokalnych aktualnego screena, nie monitora.
+- Pozycję nakładki licz przez `XScreen`/`YScreen` — kompensują `screen.X/Y` i `OffsetX/OffsetY` (scroll).
+- Nakładka pod innym screenem jest niewidoczna bez błędu — sprawdzaj kolejność listy `ScreensManager.Screens` (późniejszy = na wierzchu).
+- Odchodząc od wzorca z dokumentacji (tu: „screen 1" → „screen 0"), zaktualizuj od razu ten dokument — dewiacja bez aktualizacji docs wprowadziła buga.
 
 ---
 

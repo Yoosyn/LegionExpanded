@@ -1,7 +1,29 @@
-﻿namespace AmigaNet.Legion
+namespace AmigaNet.Legion
 {
     public partial class Legion
     {
+
+        void WYBOR_SHOW_TOOLTIP(int itemId)
+        {
+            if (itemId <= 0) return;
+
+            // Draw on the map screen in the area immediately above WYBOR.
+            // XScreen/YScreen keep the tooltip fixed on the monitor while the map scrolls.
+            screens.Screen(0);
+            var tx = screens.XScreen(230);
+            var ty = screens.YScreen(110);
+            DRAW_TOOLTIP(itemId, tx, ty, true);
+
+            // WYBOR's zones and drag-and-drop handling live on screen 1.
+            screens.Screen(1);
+        }
+
+        void WYBOR_CLEAR_TOOLTIP()
+        {
+            CLEAR_TOOLTIP();
+            screens.Screen(1);
+        }
+
         void WYBOR(int WT)
         {
             screens.Screen(1);
@@ -30,10 +52,16 @@
             var XB = ARMIA[ARM, NUMER, TX];
             var YB = ARMIA[ARM, NUMER, TY];
 
+            tooltipActive = false;
+            lastTooltipItem = -1;
+            lastTooltipZone = -1;
+            lastTooltipScreen = -1;
+            lastTooltipX = -1;
+            lastTooltipY = -1;
+
             GADGET(X, Y, 105, 55, "", 5, 0, 8, 8, -1);
             GADGET(X2, Y2, 105, 55, "", 5, 0, 8, 8, -1);
 
-            GADGET(X + 5, 70, 95, 20, "", 0, 5, 19, 19, -1);
             GADGET(235, Y, 75, 100, "", 0, 5, 19, 19, -1);
             GADGET(235, 115, 30, 15, "   <", 5, 0, 8, 1, 21);
             GADGET(280, 115, 30, 15, "    >", 5, 0, 8, 1, 22);
@@ -69,6 +97,7 @@
             {
                 if (screens.MouseClick() == 1)
                 {
+                    if (lastTooltipItem > 0) WYBOR_CLEAR_TOOLTIP();
                     var BR = 0;
                     var STREFA = screens.MouseZone();
                     var CTRL = screens.IsKeyDown(KeyLeftControl) || screens.IsKeyDown(KeyRightControl);
@@ -326,7 +355,42 @@
                     }
                 }
 
-                if (screens.MouseKey() == PRAWY) break;
+                if (screens.MouseKey() == PRAWY)
+                {
+                    if (lastTooltipItem > 0) WYBOR_CLEAR_TOOLTIP();
+                    break;
+                }
+
+                // Tooltip: hover over slots in WYBOR
+                var zone = screens.MouseZone();
+                var item = 0;
+
+                if (zone >= 1 && zone <= 8)
+                    item = ARMIA[ARM, NUMER, TPLECAK + zone - 1];
+                else if (zone >= 9 && zone <= 12)
+                    item = GLEBA[SEK, zone - 9];
+                else if (zone >= 30 && zone <= 33)
+                    item = GLEBA[SEK, zone - 30 + 4];
+                else if (zone == 13) item = ARMIA[ARM, NUMER, TGLOWA];
+                else if (zone == 14) item = ARMIA[ARM, NUMER, TKORP];
+                else if (zone == 15) item = ARMIA[ARM, NUMER, TNOGI];
+                else if (zone == 16) item = ARMIA[ARM, NUMER, TLEWA];
+                else if (zone == 17) item = ARMIA[ARM, NUMER, TPRAWA];
+
+                if (item != lastTooltipItem || zone != lastTooltipZone)
+                {
+                    if (lastTooltipItem > 0) WYBOR_CLEAR_TOOLTIP();
+
+                    if (item > 0)
+                    {
+                        WYBOR_SHOW_TOOLTIP(item);
+                    }
+
+                    lastTooltipItem = item;
+                    lastTooltipZone = zone;
+                }
+
+                screens.WaitVbl();
             }
 
             //Rainbow Del 1
@@ -464,6 +528,17 @@
             {
                 var XM = screens.XScreen(screens.XMouse());
                 var YM = screens.YScreen(screens.YMouse());
+
+                if (BR != lastTooltipItem)
+                {
+                    if (lastTooltipItem > 0) WYBOR_CLEAR_TOOLTIP();
+                    if (BR > 0)
+                    {
+                        WYBOR_SHOW_TOOLTIP(BR);
+                    }
+                    lastTooltipItem = BR;
+                }
+
                 screens.Sprite(53, screens.XMouse(), screens.YMouse(), BB + GOBY);
                 screens.WaitVbl();
                 if (screens.MouseClick() == 1)
@@ -654,6 +729,7 @@
             }
             while (!KONIEC);
 
+            if (lastTooltipItem > 0) WYBOR_CLEAR_TOOLTIP();
             WAGA(ARM, NUMER);
             WYBOR_WYPISZ(Y, NUMER);
             KONIEC = false;
@@ -666,14 +742,7 @@
             screens.HideOn();
             BB = BRON[BR, B_BOB] + BROBY;
             screens.HotSpot(BB, 11);
-            var TYP = BRON[BR, B_TYP];
             screens.NoMask(BB + GOBY);
-            screens.Ink(19);
-            screens.Bar(X + 6, 71, X + 98, 88);
-            screens.Ink(3, 19);
-            screens.Text(130, 78, BRON2_S[TYP]);
-            screens.Text(192, 78, "W:" + BRON[BR, B_WAGA]);
-            screens.Text(130, 87, BRON_S[BR]);
         }
 
         void WAGA(int A, int NR)

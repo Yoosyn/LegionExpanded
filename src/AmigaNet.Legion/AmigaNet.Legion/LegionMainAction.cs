@@ -3387,9 +3387,7 @@ namespace AmigaNet.Legion
                     }
                 }
             }
-            if (lupItems.Count == 0) return;
-
-            // Find first alive warrior for backpack display
+            // Find first alive warrior for backpack display (D1: works also when no loot)
             var NR = 1;
             for (var I = 1; I <= 10; I++)
             {
@@ -3405,7 +3403,7 @@ namespace AmigaNet.Legion
 
             // --- Setup screens ---
             screens.ScreenClose(2);
-            screens.ScreenOpen(2, 640, 512, 32, PixelMode.Lowres);
+            screens.ScreenOpen(2, 320, 244, 32, PixelMode.Lowres);
             screens.ScreenDisplay(2, 130, 40, 320, 244);
             screens.ScreenToFront(2);
             screens.ReserveZone(100);
@@ -3422,8 +3420,6 @@ namespace AmigaNet.Legion
             GADGET(234, 2, 80, 40, "", 19, 6, 0, 1, -1);
             GADGET(210, 2, 20, 16, " " + UpArrowChar, 5, 0, 8, 1, ZONE_WARRIOR_UP);
             GADGET(210, 24, 20, 16, " " + DownArrowChar, 5, 0, 8, 1, ZONE_WARRIOR_DOWN);
-            GADGET(6, 2, 100, 38, TR("BATTLE_NEXT"), 26, 24, 25, 30, ZONE_NEXT_BUTTON);
-            GADGET(110, 2, 96, 38, TR("BATTLE_TAKE_ALL"), 26, 24, 25, 30, ZONE_TAKE_ALL_BUTTON);
 
             var KONIEC = false;
             varTakenCount = 0;
@@ -3445,8 +3441,15 @@ namespace AmigaNet.Legion
 
                 // --- Screen 2: draw everything ---
                 screens.Screen(2);
+                screens.BeginBatch();
                 screens.Cls(0);
                 screens.SetFont(FON1);
+
+                // Background decoration (WYBOR style: warrior silhouettes along the left edge)
+                for (var I = 0; I <= 3; I++)
+                {
+                    screens.PasteBob(0, I * 50, GOBY + 1);
+                }
 
                 // Title + battle stats
                 OUTLINE(10, 8, TR("BATTLE_VICTORY"), 31, 0);
@@ -3455,17 +3458,17 @@ namespace AmigaNet.Legion
                 {
                     if (ARMIA[ARM, I, TE] > 0) WOJ++;
                 }
-                OUTLINE(10, 22, TR("BATTLE_SURVIVORS", WOJ), 30, 0);
-                OUTLINE(170, 22, TR("BATTLE_ENEMIES_KILLED", enemiesKilled), 30, 0);
-                OUTLINE(10, 34, TR("BATTLE_LOOT_COUNT", lupItems.Count), 30, 0);
-                OUTLINE(170, 34, TR("BATTLE_TAKEN", varTakenCount), 30, 0);
+                OUTLINE(10, 22, TR("BATTLE_SURVIVORS", WOJ), 16, 0);
+                OUTLINE(170, 22, TR("BATTLE_ENEMIES_KILLED", enemiesKilled), 16, 0);
+                OUTLINE(10, 34, TR("BATTLE_LOOT_COUNT", lupItems.Count), 16, 0);
+                OUTLINE(170, 34, TR("BATTLE_TAKEN", varTakenCount), 16, 0);
 
                 // Page arrows
                 if (totalPages > 1)
                 {
                     GADGET(270, 46, 20, 12, "<", 5, 0, 8, 30, ZONE_PAGE_PREV);
                     GADGET(292, 46, 20, 12, ">", 5, 0, 8, 30, ZONE_PAGE_NEXT);
-                    OUTLINE(220, 50, TR("BATTLE_PAGE", page + 1, totalPages), 30, 0);
+                    OUTLINE(220, 50, TR("BATTLE_PAGE", page + 1, totalPages), 16, 0);
                 }
 
                 // Item grid (2 rows x 10 columns)
@@ -3477,10 +3480,7 @@ namespace AmigaNet.Legion
                     var Y = 60 + ROW * 34;
                     var BR = lupItems[pageStart + I];
 
-                    screens.Ink(0);
-                    screens.Bar(X, Y, X + 26, Y + 30);
-                    screens.Ink(5);
-                    screens.Box(X, Y, X + 26, Y + 30);
+                    GADGET(X, Y, 28, 32, "", 0, 5, 8, 16, ZONE_GRID_START + I);
 
                     if (BR > 0 && BR < 121)
                     {
@@ -3490,26 +3490,21 @@ namespace AmigaNet.Legion
                             screens.PasteBob(X + 3, Y + 2, BROBY + BOB_NR);
                         }
                         // Price under icon
-                        screens.Ink(30);
+                        screens.Ink(16);
                         screens.Text(X + 2, Y + 26, amos.Str_S(BRON[BR, B_CENA]));
                     }
-
-                    screens.SetZone(ZONE_GRID_START + I, X, Y, X + 28, Y + 32);
                 }
 
-                // Item stats panel area (y=130..195)
-                screens.Ink(0);
-                screens.Bar(8, 130, 310, 195);
-                screens.Ink(5);
-                screens.Box(8, 130, 310, 195);
+                // Item stats panel area (y=130..195) — dark panel (K3=8), like the ground panel style
+                GADGET(7, 129, 304, 70, "", 5, 0, 8, 8, -1);
 
                 // Weight info for current warrior
                 var curWeight = ARMIA[ARM, NR, TWAGA];
                 var capacity = ARMIA[ARM, NR, TEM];
-                OUTLINE(10, 200, TR("BATTLE_WARRIOR_WEIGHT", curWeight, capacity), 30, 0);
+                OUTLINE(10, 200, TR("BATTLE_WARRIOR_WEIGHT", curWeight, capacity), 16, 0);
                 if (curWeight > capacity)
                 {
-                    OUTLINE(170, 200, TR("BATTLE_OVERWEIGHT"), 25, 0);
+                    OUTLINE(170, 200, TR("BATTLE_OVERWEIGHT"), 20, 0);
                 }
 
                 // Status message
@@ -3519,7 +3514,7 @@ namespace AmigaNet.Legion
                 }
                 if (varNoSpace)
                 {
-                    OUTLINE(10, 230, TR("BATTLE_NO_SPACE"), 25, 0);
+                    OUTLINE(10, 230, TR("BATTLE_NO_SPACE"), 20, 0);
                 }
 
                 // --- Screen 1: backpack + warrior info ---
@@ -3543,11 +3538,22 @@ namespace AmigaNet.Legion
                     screens.SetZone(ZONE_BACKPACK_START + 4 + I, 236 + I * 20, 24, 256 + I * 20, 44);
                 }
 
+                // Clear the warrior name strip including the full glyph extent
+                // (glyphs extend above the visible strip by font.Baseline pixels)
                 screens.Ink(0);
-                screens.Bar(0, 39, 209, 44);
-                screens.GrWriting(0);
-                OUTLINE(6, 40, ARMIA_S[ARM, NR] + " " + RASY_S[ARMIA[ARM, NR, TRASA]], 30, 1);
+                screens.Bar(0, 40 - screens.TextBase(), 209, 44);
 
+                // Redraw buttons overlapped by the name strip clear
+                GADGET(6, 2, 100, 38, TR("BATTLE_NEXT"), 8, 2, 6, 31, ZONE_NEXT_BUTTON);
+                if (lupItems.Count > 0)
+                {
+                    GADGET(110, 2, 96, 38, TR("BATTLE_TAKE_ALL"), 8, 2, 6, 31, ZONE_TAKE_ALL_BUTTON);
+                }
+
+                screens.GrWriting(0);
+                OUTLINE(6, 40, ARMIA_S[ARM, NR] + " " + RASY_S[ARMIA[ARM, NR, TRASA]], 3, 1);
+
+                screens.EndBatch();
                 screens.View();
                 varNoSpace = false;
                 statusMsg = "";
@@ -3569,6 +3575,7 @@ namespace AmigaNet.Legion
                         {
                             TakeAllLoot(lupItems, ref varTakenCount, ref varNoSpace);
                             while (screens.MouseClick() != 0) { screens.WaitVbl(); }
+                            if (lupItems.Count == 0) { KONIEC = true; break; }
                             break; // Redraw
                         }
                     }
@@ -3610,6 +3617,7 @@ namespace AmigaNet.Legion
                         {
                             TakeAllLoot(lupItems, ref varTakenCount, ref varNoSpace);
                             while (screens.MouseClick() != 0) { screens.WaitVbl(); }
+                            if (lupItems.Count == 0) { KONIEC = true; break; }
                             break;
                         }
 
@@ -3655,14 +3663,15 @@ namespace AmigaNet.Legion
                                 var BRO1_S = BRON2_S[BRON[BR, B_TYP]];
                                 var BRO2_S = BRON_S[BR];
                                 screens.Screen(2);
-                                screens.Ink(0);
+                                screens.BeginBatch();
+                                screens.Ink(8);
                                 screens.Bar(9, 131, 309, 194);
-                                OUTLINE(12, 138, BRO1_S + " " + BRO2_S, 31, 0);
-                                OUTLINE(12, 152, TR("BATTLE_ITEM_DMG", BRON[BR, B_SI]), 30, 0);
-                                OUTLINE(12, 163, TR("BATTLE_ITEM_ARM", BRON[BR, B_PAN]), 30, 0);
-                                OUTLINE(12, 174, TR("BATTLE_ITEM_SPD", BRON[BR, B_SZ]), 30, 0);
-                                OUTLINE(160, 152, TR("BATTLE_ITEM_WGT", BRON[BR, B_WAGA]), 30, 0);
-                                OUTLINE(160, 163, TR("BATTLE_ITEM_PRICE", BRON[BR, B_CENA]), 30, 0);
+                                OUTLINE(12, 138, BRO1_S + " " + BRO2_S, 3, 0);
+                                OUTLINE(12, 152, TR("BATTLE_ITEM_DMG", BRON[BR, B_SI]), 16, 0);
+                                OUTLINE(12, 163, TR("BATTLE_ITEM_ARM", BRON[BR, B_PAN]), 16, 0);
+                                OUTLINE(12, 174, TR("BATTLE_ITEM_SPD", BRON[BR, B_SZ]), 16, 0);
+                                OUTLINE(160, 152, TR("BATTLE_ITEM_WGT", BRON[BR, B_WAGA]), 16, 0);
+                                OUTLINE(160, 163, TR("BATTLE_ITEM_PRICE", BRON[BR, B_CENA]), 16, 0);
                                 var PLACE_S = "";
                                 var PL = BRON[BR, B_PLACE];
                                 if (PL == 1) PLACE_S = "Głowa";
@@ -3670,12 +3679,14 @@ namespace AmigaNet.Legion
                                 else if (PL == 3) PLACE_S = "Nogi";
                                 else if (PL == 4) PLACE_S = "Jednoręczna";
                                 else if (PL == 6) PLACE_S = "Dwuręczna";
-                                if (PLACE_S != "") OUTLINE(160, 174, PLACE_S, 30, 0);
+                                if (PLACE_S != "") OUTLINE(160, 174, PLACE_S, 16, 0);
+                                screens.EndBatch();
                                 screens.View();
 
                                 // Enter drag mode
                                 var BB = BRON[BR, B_BOB] + BROBY;
                                 screens.HotSpot(BB, 11);
+                                screens.HideOn();
                                 screens.Sprite(53, screens.XMouse(), screens.YMouse(), BB);
 
                                 // Wait for initial click release before listening for drop
@@ -3697,6 +3708,7 @@ namespace AmigaNet.Legion
                                         screens.SpriteOff(53);
                                         screens.WaitVbl();
                                         screens.HotSpot(BB, 0);
+                                        screens.ShowOn();
 
                                         screens.Screen(1);
                                         var targetZone = screens.MouseZone();
@@ -3731,6 +3743,7 @@ namespace AmigaNet.Legion
                                         screens.SpriteOff(53);
                                         screens.WaitVbl();
                                         screens.HotSpot(BB, 0);
+                                        screens.ShowOn();
                                         while (screens.MouseClick() != 0) { screens.WaitVbl(); }
                                         DRAG_DONE = true;
                                     }
@@ -3759,14 +3772,16 @@ namespace AmigaNet.Legion
                                 var BRO1_S = BRON2_S[BRON[BR, B_TYP]];
                                 var BRO2_S = BRON_S[BR];
                                 screens.Screen(2);
-                                screens.Ink(0);
+                                screens.BeginBatch();
+                                screens.Ink(8);
                                 screens.Bar(9, 131, 309, 194);
-                                OUTLINE(12, 138, BRO1_S + " " + BRO2_S, 31, 0);
-                                OUTLINE(12, 152, TR("BATTLE_ITEM_DMG", BRON[BR, B_SI]), 30, 0);
-                                OUTLINE(12, 163, TR("BATTLE_ITEM_ARM", BRON[BR, B_PAN]), 30, 0);
-                                OUTLINE(12, 174, TR("BATTLE_ITEM_SPD", BRON[BR, B_SZ]), 30, 0);
-                                OUTLINE(160, 152, TR("BATTLE_ITEM_WGT", BRON[BR, B_WAGA]), 30, 0);
-                                OUTLINE(160, 163, TR("BATTLE_ITEM_PRICE", BRON[BR, B_CENA]), 30, 0);
+                                OUTLINE(12, 138, BRO1_S + " " + BRO2_S, 3, 0);
+                                OUTLINE(12, 152, TR("BATTLE_ITEM_DMG", BRON[BR, B_SI]), 16, 0);
+                                OUTLINE(12, 163, TR("BATTLE_ITEM_ARM", BRON[BR, B_PAN]), 16, 0);
+                                OUTLINE(12, 174, TR("BATTLE_ITEM_SPD", BRON[BR, B_SZ]), 16, 0);
+                                OUTLINE(160, 152, TR("BATTLE_ITEM_WGT", BRON[BR, B_WAGA]), 16, 0);
+                                OUTLINE(160, 163, TR("BATTLE_ITEM_PRICE", BRON[BR, B_CENA]), 16, 0);
+                                screens.EndBatch();
                                 screens.View();
                                 while (screens.MouseClick() != 0) { screens.WaitVbl(); }
                             }
